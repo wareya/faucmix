@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#undef main
 #include <stdio.h>
 #include <vector>
 #include <atomic>
@@ -30,8 +31,10 @@ struct pcmstream
 {
     int channels;
     int samplerate;
-    virtual void * generateframe(SDL_AudioSpec * spec, unsigned int len, emitterinfo * info);
-    virtual bool isfinished();
+    virtual void * generateframe(SDL_AudioSpec * spec, unsigned int len, emitterinfo * info)
+    {}
+    virtual bool isfinished()
+    {}
 };
 
 /*
@@ -87,7 +90,7 @@ struct wavstream : pcmstream
     void * generateframe(SDL_AudioSpec * spec, unsigned int len, emitterinfo * info)
     {
         if(buffer == nullptr)
-            buffer = (Uint8 *)malloc(spec->channels*SDL_AUDIO_MASK_BITSIZE(spec->format)/8*len);
+            buffer = (Uint8 *)malloc(spec->channels*(SDL_AUDIO_BITSIZE(spec->format))/8*len);
         return nullptr;
     }
     bool isplaying()
@@ -199,7 +202,7 @@ int t_wavfile_load(void * etc)
             fread(&len, 4, 1, file);
             if (len%2) // yes there's software broken enough to output files with unaligned chunk sizes
                 len++;
-            printf("Unknown chunk 0x%08X, seeking by 0x%08X\n", *(Uint32*)(subchunk), len);
+            printf("Unknown chunk 0x%08X, seeking by 0x%08X\n", subchunk, len);
             fseek(file, len, SEEK_CUR);
             if(ferror(file) or feof(file) or ftell(file) >= filesize)
                 goto out; // double break pls
