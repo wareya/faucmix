@@ -87,7 +87,7 @@ struct wavstream : pcmstream
     void * generateframe(SDL_AudioSpec * spec, unsigned int len, emitterinfo * info)
     {
         if(buffer == nullptr)
-            buffer = (Uint8 *)malloc(spec);
+            buffer = (Uint8 *)malloc(spec->channels*SDL_AUDIO_MASK_BITSIZE(spec->format)/8*len);
         return nullptr;
     }
     bool isplaying()
