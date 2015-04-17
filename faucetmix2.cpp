@@ -33,7 +33,9 @@ struct pcmstream
     int samplerate;
     virtual void * generateframe(SDL_AudioSpec * spec, unsigned int len, emitterinfo * info)
     {}
-    virtual bool isfinished()
+    virtual bool isplaying()
+    {}
+    virtual void fire(emitterinfo * info)
     {}
 };
 
@@ -60,12 +62,13 @@ struct wavformat
     bool isfloatingpoint;
     Uint16 channels;
     Uint32 samplerate;
+    Uint16 blocksize;
     Uint8 bytespersample;
     float datagain;
     double slowdatagain;
 };
 
-struct wavstream : pcmstream
+struct wavfile
 {
     std::atomic<bool> ready;
     
@@ -75,27 +78,73 @@ struct wavstream : pcmstream
     
     std::string stored;
     wavformat format;
+};
+
+struct wavstream : pcmstream
+{
+    wavfile sample;
     
-    Uint8 * buffer = nullptr;
-    Uint32 bufferlen;
-    
-    wavstream(const char * filename)
+    wavstream(const char * filename) // TODO: SEPARATE INSTANTIATION OF WAVSTREAM FROM WAVFILE
     {
-        ready = false;
-        stored = std::string(filename);
-        SDL_CreateThread(&t_wavfile_load, "faucetmix2.cpp:t_wavfile_load", this);
+        puts("loading sample");
+        sample.ready = false;
+        sample.stored = std::string(filename);
+        SDL_CreateThread(&t_wavfile_load, "faucetmix2.cpp:t_wavfile_load", &sample);
     }
     
     Uint32 position; // Position is in OUTPUT SAMPLES, not SOUNDBYTE SAMPLES, i.e. it counts want.freqs not wavstream.freqs
+    Uint8 * buffer = nullptr;
+    Uint32 bufferlen;
     void * generateframe(SDL_AudioSpec * spec, unsigned int len, emitterinfo * info)
     {
+        if(!sample.ready)
+            return nullptr;
+        
+        if(!sample.data)
+            return nullptr;
+        
+        Uint32 specblock = spec->channels*(SDL_AUDIO_BITSIZE(spec->format))/8; // spec blocksize
+        if(specblock == 0)
+            return nullptr;
+        
+        auto outputsize = len; // output bytes 
+        len /= specblock; // output samples
+        if(outputsize != bufferlen)
+        {
+            free(buffer);
+            buffer = nullptr;
+        }
         if(buffer == nullptr)
-            buffer = (Uint8 *)malloc(spec->channels*(SDL_AUDIO_BITSIZE(spec->format))/8*len);
-        return nullptr;
+        {
+            buffer = (Uint8 *)malloc(outputsize);
+            bufferlen = outputsize;
+        }
+        
+        if(position+len <= sample.length)
+        {
+            memcpy(buffer, sample.data+position*sample.format.blocksize, outputsize); // TODO: RESAMPLE
+        }
+        else
+        {
+            auto first = position+len - sample.length;
+            auto second = sample.length - first;
+            memcpy(buffer, sample.data+position*sample.format.blocksize, first); // TODO: RESAMPLE
+            /* TODO: check loop
+            memcpy(buffer+first, data+position*format.blocksize, first); // TODO: RESAMPLE
+            */
+        }
+        
+        
+        position += len;
+        if(position > sample.length)
+            info->playing = false;
+        
+        return buffer;
     }
-    bool isplaying()
+    void fire(emitterinfo * info)
     {
-        return false;
+        position = 0;
+        info->playing = true;
     }
 };
 int t_wavfile_load(void * etc)
@@ -111,7 +160,7 @@ int t_wavfile_load(void * etc)
         INVALID_BITSTREAM
     };
     /* setup */
-    auto self = (wavstream *)etc;
+    auto self = (wavfile *)etc;
     const char * fname = self->stored.data();
     
     auto file = fopen(fname, "rb");
@@ -298,6 +347,7 @@ int t_wavfile_load(void * etc)
     self->format.bytespersample = bytespersample;
     self->format.datagain = datagain;
     self->format.slowdatagain = slowdatagain;
+    self->format.blocksize = blocksize;
     
     
     /* normalize float */
@@ -330,6 +380,7 @@ int t_wavfile_load(void * etc)
     self->fmt = fmt;
     self->data = data;
     self->ready = true;
+    puts("loaded sample");
     return GOOD;
 }
 
@@ -338,14 +389,22 @@ struct emitter
     pcmstream * stream;
     emitterinfo info;
     void * generateframe(SDL_AudioSpec * spec, unsigned int len);
+    
+    void fire();
 };
 void * emitter::generateframe(SDL_AudioSpec * spec, unsigned int len)
 {
     if(!info.playing)
         return nullptr;
-    return stream->generateframe(spec, len, &info);
+    auto r = stream->generateframe(spec, len, &info);
+    return r;
+}
+void emitter::fire()
+{
+    stream->fire(&info);
 }
 
+std::vector<emitter *> emitters;
 
 void respondtoSDL(void * udata, Uint8 * stream, int len)
 {
@@ -358,14 +417,18 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
     int stream_LE = SDL_AUDIO_ISLITTLEENDIAN(spec.format);
     
     std::vector<void *> responses;
-    //for(auto stream : streamlist)
-    //{
-    //    responses.push_back(stream->generateframe(stream_bitdepth, spec, len));
-    //}
-    while(used < len)
+    for(auto stream : emitters)
     {
+        auto f = stream->generateframe(&spec, len);
+        if(f != nullptr)
+            responses.push_back(f);
+    }
+    //while(used < len)
+    {
+        if(responses.size()>0)
+            memcpy(stream, responses[0], len);
         // TODO: mix responses
-        len++;
+        //len++;
     }
 }
 
@@ -377,14 +440,14 @@ int main(int argc, char * argv[])
     
     emitter output;
     output.stream = &sample;
-    //output.position = 0;
     output.info.pan = 0.0f;
     output.info.volume = 1.0f;
     output.info.playing = true;
     output.info.loop = true;
     output.info.mixdown = 1.0f;
     
-    //emitters.push_back(&output);
+    emitters.push_back(&output);
+    
     SDL_AudioSpec want;
     want.freq = 44100;
     want.format = AUDIO_S16;
@@ -397,9 +460,11 @@ int main(int argc, char * argv[])
     
     printf("%d\n", got.freq);
     
+    output.fire();
+    
     SDL_PauseAudio(0);
-    //while(output.playing)
-    //    SDL_Delay(10);
+    while(output.info.playing)
+        SDL_Delay(10);
     
     return 0;
 }
