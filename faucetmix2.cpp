@@ -80,6 +80,60 @@ struct wavfile
     wavformat format;
 };
 
+
+
+linear_resample_into_buffer(wavformat * sourcebufferformat, void * sourcebuffer, Uint32 sourcebufferbytes, void * targetbuffer, Uint32 targetbufferbytes, Uint32 position, Uint32 targetsamplerate, bool looparound)
+{
+    enum returncodes
+    {
+        NORESAMPLING,
+        UPSAMPLED,
+        DOWNSAMPLED,
+        INVALID
+    }
+    long long difference = sourcebufferformat->samplerate - targetsamplerate;
+    
+    if(difference == 0)
+        return NORESAMPLING;
+        /*
+    else if (difference < 0) // upsample, use triangle filter to artificially create SUPER RETRO SOUNDING highs
+    {
+        // convert output position to surrounding input positions
+        long long point = position * sourcebufferformat->samplerate;
+        long outpoint1 = point/got.freq;
+        long outpoint2 = point/got.freq + 1;
+        
+        //float point = ratefactor*emitter->position; // point is position on audio stream
+        auto a = emitter->sample->sample_from_channel_and_position(i, outpoint1);
+        auto b = emitter->sample->sample_from_channel_and_position(i, outpoint2);
+        float fraction = (point%got.freq)/(float)(got.freq);
+        //float fraction = point-floor(point);
+        transient += fraction*b + (1-fraction)*a;
+    }
+    else // difference > 0
+    {   // downsample, use triangle filter for laziness's sake
+        // convert input position to surrounding output positions
+        //long long point = emitter->position * got.freq;
+        float point = ratefactor*emitter->position; // point is position on emitter stream
+        int bottom = ceil(point-ratefactor); // window
+        int top = floor(point+ratefactor);
+        float windowlen = ratefactor*2;
+        
+        float calibrate = 0; // convolution normalization
+        float sample = 0; // output sample
+        for(float j = ceil(bottom); j < top; j++) // convolution
+        {
+            float factor = j>point?j-point:point-j; // distance from output sample
+            factor = ratefactor - factor; // convolution index of this sample
+            calibrate += factor;
+            sample += emitter->sample->sample_from_channel_and_position(i, j) * factor;
+        }
+        sample /= calibrate;
+        transient += sample;
+    }*/
+}
+
+
 struct wavstream : pcmstream
 {
     wavfile sample;
