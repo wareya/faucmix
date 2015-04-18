@@ -82,7 +82,16 @@ struct wavfile
 
 
 
-linear_resample_into_buffer(wavformat * sourcebufferformat, void * sourcebuffer, Uint32 sourcebufferbytes, void * targetbuffer, Uint32 targetbufferbytes, Uint32 position, Uint32 targetsamplerate, bool looparound)
+linear_resample_into_buffer
+( wavformat * sourcebufferformat
+, void * sourcebuffer
+, Uint32 sourcebufferbytes
+, void * targetbuffer
+, Uint32 targetbufferbytes
+, Uint32 position
+, Uint32 targetsamplerate
+, bool looparound
+)
 {
     enum returncodes
     {
