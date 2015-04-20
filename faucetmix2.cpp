@@ -1,6 +1,9 @@
+// Coypright 2015 Alexander "wareya" Nadeau <wareya@gmail.com>
+
 #include <SDL2/SDL.h>
 #undef main
 #include <stdio.h>
+#include <iostream>
 #include <vector>
 #include <atomic>
 #include <string>
@@ -68,43 +71,189 @@ struct wavformat
     double slowdatagain;
 };
 
+wavformat audiospec_to_wavformat(SDL_AudioSpec * from)
+{
+/*
+    float datagain = 0;
+    double slowdatagain = 0;
+    if(isfloatingpoint)
+        datagain = 1.0f;
+    else if(bytespersample == 1)
+        datagain = 0x80;
+    else if(bytespersample == 2)
+        datagain = 0x8000;
+    else if(bytespersample == 3)
+        slowdatagain = 0x800000;
+    else if(bytespersample == 4)
+        slowdatagain = 0x80000000;
+       */ 
+        
+    auto isfloat = SDL_AUDIO_ISFLOAT(from->format);
+    auto bytes = SDL_AUDIO_BITSIZE(from->format)/8;
+    auto isbig = bytes > 2;
+    return
+    { (bool)isfloat
+    , (Uint16)from->channels
+    , (Uint32)from->freq
+    , (Uint16)(bytes*from->channels)
+    , (Uint8)bytes
+    , (float)(isfloat?1.0f:isbig?0.0f:ipower(0x100,bytes)/2.0f)
+    , (double)(isbig?ipower(0x100,bytes)/2.0L:0.0L)
+    };
+}
+
 struct wavfile
 {
     std::atomic<bool> ready;
     
     Uint8 * fmt = nullptr;
     Uint8 * data = nullptr;
-    Uint32 length;
+    Uint32 samples;
+    Uint32 bytes;
     
     std::string stored;
     wavformat format;
 };
 
+float get_sample(void * addr, wavformat * fmt)
+{
+    float trans;
+    if(fmt->bytespersample == 1)
+    {
+        trans = (int)(*(Uint8*)addr)-0x80;
+        trans /= fmt->datagain;
+    }
+    if(fmt->bytespersample == 2)
+    {
+        if(fmt->isfloatingpoint)
+            trans = *(float*)addr;
+        else
+        {
+            trans = *(Sint16*)addr;
+            trans /= fmt->datagain;
+        }
+    }
+    if(fmt->bytespersample == 3)
+    {
+        Sint32 trans2 = *((Sint32*)addr);
+        trans2 = trans2>>8<<8 / 256;
+        trans = (double)(trans2) / fmt->slowdatagain;
+    }
+    if(fmt->bytespersample == 4)
+    {
+        if(fmt->isfloatingpoint)
+            trans = *(double*)addr;
+        else
+        {
+            double trans2 = *((Sint32*)addr);
+            trans = trans2 / fmt->slowdatagain;
+        }
+    }
+    return trans;
+}
 
+void set_sample(Uint8 * addr, wavformat * fmt, float val)
+{
+    if(fmt->bytespersample == 1)
+    {
+        *(Uint8*)addr = val*fmt->datagain+0x80; // TODO: Do I have to overflow-check this?
+        return;
+    }
+    if(fmt->bytespersample == 2)
+    {
+        if(fmt->isfloatingpoint)
+            *(float*)addr = val;
+        else
+            *(Sint16*)addr = val*fmt->datagain;
+        return;
+    }
+    if(fmt->bytespersample == 3)
+    {
+        Uint32 inter = (double)val*fmt->slowdatagain;
+        inter = inter&0xFFFFFF00;
+        auto inter2 = (Uint8*)&inter;
+        *(Uint8*)(addr  ) = *(inter2+1); // TODO: There has got to be a better way to do this.
+        *(Uint8*)(addr+1) = *(inter2+2); 
+        *(Uint8*)(addr+2) = *(inter2+3); 
+        return;
+    }
+    if(fmt->bytespersample == 4)
+    {
+        if(fmt->isfloatingpoint)
+            *(double*)addr = val;
+        else
+            *(Uint32*)addr = val * fmt->slowdatagain;
+        return;
+    }
+    puts("ayy");
+}
 
-linear_resample_into_buffer
-( wavformat * sourcebufferformat
-, void * sourcebuffer
-, Uint32 sourcebufferbytes
-, void * targetbuffer
-, Uint32 targetbufferbytes
-, Uint32 position
-, Uint32 targetsamplerate
+// Takes N channels, gives N channels
+int linear_resample_into_buffer
+( Uint32 position
+, wavformat * srcfmt
+, void * src
+, Uint32 srclen
+, void * tgt
+, Uint32 tgtlen
+, wavformat * tgtfmt
 , bool looparound
 )
 {
     enum returncodes
     {
         NORESAMPLING,
+        EXPANDED,
+        BITCRUSHED,
         UPSAMPLED,
         DOWNSAMPLED,
-        INVALID
-    }
-    long long difference = sourcebufferformat->samplerate - targetsamplerate;
+        INVALID,
+        UNSUPPORTED
+    };
+    
+    if(srcfmt->channels != tgtfmt->channels)
+        return INVALID;
+    
+    auto channels = srcfmt->channels;
+    
+    Sint64 difference = srcfmt->samplerate - tgtfmt->samplerate;
+    auto srcs = srclen/srcfmt->blocksize;
+    auto tgts = tgtlen/tgtfmt->blocksize;
+    
+    auto srcb = srcfmt->bytespersample;
+    auto tgtb = tgtfmt->bytespersample;
     
     if(difference == 0)
-        return NORESAMPLING;
-        /*
+    {
+        Sint32 overrun = tgts+position - srcs;
+        overrun = overrun>0? overrun : 0;
+        if(overrun)
+            puts("overun");
+        if( srcfmt->isfloatingpoint == tgtfmt->isfloatingpoint
+        and srcfmt->bytespersample == tgtfmt->bytespersample)
+        {
+            //memcpy(tgt, (char*)src+srcs, overrun?tgtlen-overrun*tgtfmt->blocksize:tgtlen);
+            memcpy(tgt, (char*)(src)+position*srcfmt->blocksize, tgtlen);
+            //memset((char*)tgt+position, (srcfmt->bytespersample==1)?128:0, overrun?overrun*tgtfmt->blocksize:0);
+            return NORESAMPLING;
+        }
+        else // have to expand or crush 
+        {
+            for(auto s = 0; s < tgts; s++)
+            {
+                for(auto c = 0; c < srcfmt->channels; c++)
+                {
+                    auto which = position*srcfmt->channels+s+c;
+                    size_t from = (size_t)src + which*srcb;
+                    size_t to = (size_t)tgt + which*tgtb;
+                    set_sample((Uint8*)to, tgtfmt, get_sample((Uint8*)from, srcfmt));
+                }
+            }
+        }
+    }
+    
+    
+   /*
     else if (difference < 0) // upsample, use triangle filter to artificially create SUPER RETRO SOUNDING highs
     {
         // convert output position to surrounding input positions
@@ -183,23 +332,30 @@ struct wavstream : pcmstream
             bufferlen = outputsize;
         }
         
-        if(position+len <= sample.length)
-        {
-            memcpy(buffer, sample.data+position*sample.format.blocksize, outputsize); // TODO: RESAMPLE
-        }
-        else
-        {
-            auto first = position+len - sample.length;
-            auto second = sample.length - first;
-            memcpy(buffer, sample.data+position*sample.format.blocksize, first); // TODO: RESAMPLE
-            /* TODO: check loop
-            memcpy(buffer+first, data+position*format.blocksize, first); // TODO: RESAMPLE
-            */
-        }
-        
+        // TODO: CHECK FOR LOOP
+/*
+int linear_resample_into_buffer
+( Uint32 position
+, wavformat * sourcebufferformat
+, void * sourcebuffer
+, Uint32 sourcebufferbytes
+, void * targetbuffer
+, Uint32 targetbufferbytes
+, wavformat * targetbufferformat
+, bool looparound
+)
+{*/
+        auto fuck = audiospec_to_wavformat(spec);
+        linear_resample_into_buffer
+        ( position
+        , &sample.format
+        , sample.data, sample.bytes
+        , buffer, bufferlen
+        , &fuck, false);
         
         position += len;
-        if(position > sample.length)
+        
+        if(position > sample.samples)
             info->playing = false;
         
         return buffer;
@@ -439,7 +595,8 @@ int t_wavfile_load(void * etc)
         datagain = highest;
         printf("Normalized sample for %f peak amplitude.\n", datagain);
     }
-    self->length = length;
+    self->samples = length;
+    self->bytes = datalen;
     self->fmt = fmt;
     self->data = data;
     self->ready = true;
@@ -519,7 +676,12 @@ int main(int argc, char * argv[])
     want.callback = respondtoSDL;
     want.userdata = &want;
     SDL_AudioSpec got;
-    SDL_OpenAudio(&want, &got);
+    auto r = SDL_OpenAudio(&want, &got);
+    if(r < 0)
+    {
+        puts("Failed to open device");
+        std::cout << SDL_GetError();
+    }
     
     printf("%d\n", got.freq);
     
