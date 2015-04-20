@@ -232,8 +232,8 @@ int linear_resample_into_buffer
         if( srcfmt->isfloatingpoint == tgtfmt->isfloatingpoint
         and srcfmt->bytespersample == tgtfmt->bytespersample)
         {
-            //memcpy(tgt, (char*)src+srcs, overrun?tgtlen-overrun*tgtfmt->blocksize:tgtlen);
-            memcpy(tgt, (char*)(src)+position*srcfmt->blocksize, tgtlen);
+            memcpy(tgt, (char*)(src)+position*srcfmt->blocksize, overrun?tgtlen-overrun*tgtfmt->blocksize:tgtlen);
+            //memcpy(tgt, (char*)(src)+position*srcfmt->blocksize, tgtlen);
             //memset((char*)tgt+position, (srcfmt->bytespersample==1)?128:0, overrun?overrun*tgtfmt->blocksize:0);
             return NORESAMPLING;
         }
@@ -253,21 +253,35 @@ int linear_resample_into_buffer
     }
     
     
-   /*
-    else if (difference < 0) // upsample, use triangle filter to artificially create SUPER RETRO SOUNDING highs
+    
+    else if (difference > 0) // upsample, use triangle filter to artificially create SUPER RETRO SOUNDING highs
     {
-        // convert output position to surrounding input positions
-        long long point = position * sourcebufferformat->samplerate;
-        long outpoint1 = point/got.freq;
-        long outpoint2 = point/got.freq + 1;
-        
-        //float point = ratefactor*emitter->position; // point is position on audio stream
-        auto a = emitter->sample->sample_from_channel_and_position(i, outpoint1);
-        auto b = emitter->sample->sample_from_channel_and_position(i, outpoint2);
-        float fraction = (point%got.freq)/(float)(got.freq);
-        //float fraction = point-floor(point);
-        transient += fraction*b + (1-fraction)*a;
+        for(auto s = 0; s < tgts; s++)
+        {
+            for(auto c = 0; c < srcfmt->channels; c++)
+            {
+                auto srcrate = srcfmt->samplerate;
+                auto tgtrate = tgtfmt->samplerate;
+                auto which = position*srcfmt->channels+s+c;
+                
+                float fraction = (float)((which*tgtrate) % srcrate) / (srcrate);
+                printf("%f\n", fraction);
+                
+                auto lower = which*srcrate/tgtrate;
+                /*auto higher = which+(;
+                
+                
+                get_sample((Uint8*)from, srcfmt)
+                
+                
+                size_t from = (size_t)src + which*srcb;
+                size_t to = (size_t)tgt + which*tgtb;
+                set_sample((Uint8*)to, tgtfmt, );*/
+            }
+        }
     }
+    
+    /*
     else // difference > 0
     {   // downsample, use triangle filter for laziness's sake
         // convert input position to surrounding output positions
@@ -672,7 +686,7 @@ int main(int argc, char * argv[])
     want.freq = 44100;
     want.format = AUDIO_S16;
     want.channels = 2;
-    want.samples = 1024;
+    want.samples = 2001;
     want.callback = respondtoSDL;
     want.userdata = &want;
     SDL_AudioSpec got;
