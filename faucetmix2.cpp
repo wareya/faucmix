@@ -1,4 +1,6 @@
 // Coypright 2015 Alexander "wareya" Nadeau <wareya@gmail.com>
+// Available under either the ISC or zlib licenses.
+
 
 #include <SDL2/SDL.h>
 #undef main
