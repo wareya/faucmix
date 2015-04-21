@@ -318,13 +318,12 @@ int linear_resample_into_buffer
                 {
                     if((window_bottom+i) > srcs or (window_top+i) < 0)
                         continue;
-                    Sint32 hiorder_closeness = srcrate - abs(i*tgtrate - hiorder_bottom - tgtrate); 
-                    float closeness = 1.0f;
-                    if(c == 0)
-                        closeness = (float)srcrate / closeness;
+                    Sint32 hiorder_closeness = srcrate - abs(i*tgtrate - hiorder_bottom - tgtrate);
+                    float closeness = hiorder_closeness / (double)srcrate;
                     transient += get_sample((Uint8*)src + ((window_bottom+i)*srcfmt->channels+c)*srcb, srcfmt) * closeness;
                     calibrate += closeness;
                 }
+                std::cout << calibrate << " " << (float)srcrate/tgtrate << "\n";
                 transient /= calibrate;
                 set_sample((Uint8*)tgt+(s*tgtfmt->channels+c)*tgtb, tgtfmt, transient);
             }
@@ -347,7 +346,7 @@ int linear_resample_into_buffer
         sample /= calibrate;
         transient += sample;*/
     }
-    fwrite(tgt, 1, tgts, dumpfile);
+    fwrite(tgt, 1, tgtlen, dumpfile);
     fflush(dumpfile);
 }
 
