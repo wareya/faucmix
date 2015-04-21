@@ -218,7 +218,7 @@ int linear_resample_into_buffer
     
     auto channels = srcfmt->channels;
     
-    Sint64 difference = srcfmt->samplerate - tgtfmt->samplerate;
+    Sint64 difference = (Sint64)tgtfmt->samplerate - srcfmt->samplerate;
     auto srcs = srclen/srcfmt->blocksize;
     auto tgts = tgtlen/tgtfmt->blocksize;
     
@@ -227,6 +227,7 @@ int linear_resample_into_buffer
     
     if(difference == 0)
     {
+        puts("SAME");
         Sint32 overrun = tgts+position - srcs;
         overrun = overrun>0? overrun : 0;
         if(overrun)
@@ -259,6 +260,7 @@ int linear_resample_into_buffer
     
     else if (difference > 0) // upsample, use triangle filter to artificially create SUPER RETRO SOUNDING highs
     {
+        puts("UP");
         for(auto s = 0; s < tgts; s++)
         {
             auto srcrate = srcfmt->samplerate;
@@ -284,11 +286,24 @@ int linear_resample_into_buffer
         }
     }
     
-    /*
+    
     else // difference > 0
     {   // downsample, use triangle filter for laziness's sake
         // convert input position to surrounding output positions
-        //long long point = emitter->position * got.freq;
+        
+        for(auto s = 0; s < tgts; s++)
+        {
+            auto srcrate = srcfmt->samplerate;
+            auto tgtrate = tgtfmt->samplerate;
+            Uint64 which = position+s;
+            
+            // Fun fact: you can use integer division as a kind of floor/ceil!
+            Uint32 window_bottom = (which*srcrate-srcrate)/tgtrate + ((which%tgtrate != 0)?1:0); // that addition part is the ceil
+            Uint32 window_top = (which*srcrate+srcrate)/tgtrate;
+            
+            
+        }
+        /*
         float point = ratefactor*emitter->position; // point is position on emitter stream
         int bottom = ceil(point-ratefactor); // window
         int top = floor(point+ratefactor);
@@ -304,8 +319,8 @@ int linear_resample_into_buffer
             sample += emitter->sample->sample_from_channel_and_position(i, j) * factor;
         }
         sample /= calibrate;
-        transient += sample;
-    }*/
+        transient += sample;*/
+    }
 }
 
 
@@ -686,7 +701,7 @@ int main(int argc, char * argv[])
     emitters.push_back(&output);
     
     SDL_AudioSpec want;
-    want.freq = 44100;
+    want.freq = 8000;
     want.format = AUDIO_S16;
     want.channels = 2;
     want.samples = 2048;
