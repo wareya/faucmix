@@ -34,11 +34,12 @@ struct emitterinfo
 
 struct pcmstream
 {
-    int channels;
     int samplerate;
     virtual void * generateframe(SDL_AudioSpec * spec, unsigned int len, emitterinfo * info)
     {}
     virtual bool isplaying()
+    {}
+    virtual Uint16 channels()
     {}
     virtual void fire(emitterinfo * info)
     {}
@@ -92,7 +93,7 @@ wavformat audiospec_to_wavformat(SDL_AudioSpec * from)
         
     auto isfloat = SDL_AUDIO_ISFLOAT(from->format);
     auto bytes = SDL_AUDIO_BITSIZE(from->format)/8;
-    auto isbig = bytes > 2;
+    auto isbig = bytes > 2 and !isfloat;
     return
     { (bool)isfloat
     , (Uint16)from->channels
@@ -189,6 +190,8 @@ void set_sample(Uint8 * addr, wavformat * fmt, float val)
     }
     puts("ayy");
 }
+
+FILE * dumpfile;
 
 // Takes N channels, gives N channels
 int linear_resample_into_buffer
@@ -295,13 +298,36 @@ int linear_resample_into_buffer
         {
             auto srcrate = srcfmt->samplerate;
             auto tgtrate = tgtfmt->samplerate;
-            Uint64 which = position+s;
+            Sint64 which = position+s;
             
             // Fun fact: you can use integer division as a kind of floor/ceil!
-            Uint32 window_bottom = (which*srcrate-srcrate)/tgtrate + ((which%tgtrate != 0)?1:0); // that addition part is the ceil
-            Uint32 window_top = (which*srcrate+srcrate)/tgtrate;
+            Sint32 window_bottom = (which*srcrate-srcrate)/tgtrate + ((which%tgtrate != 0)?1:0); // that addition part is the ceil
+            Sint32 window_top = (which*srcrate+srcrate)/tgtrate;
+            int window_length = window_top - window_bottom;
+            //printf("%d %d %d\n", window_bottom, window_top, window_length);
             
+            Uint64 hiorder_position = which * srcrate;
+            Uint64 hiorder_bottom = hiorder_position - (window_bottom * tgtrate);
+            Uint64 hiorder_winlen = 2*srcrate;
             
+            for(auto c = 0; c < channels; c++)
+            {
+                float transient = 0.0f;
+                float calibrate = 0.0f;
+                for(auto i = window_length; i > 0; i--) // convolution
+                {
+                    if((window_bottom+i) > srcs or (window_top+i) < 0)
+                        continue;
+                    Sint32 hiorder_closeness = srcrate - abs(i*tgtrate - hiorder_bottom - tgtrate); 
+                    float closeness = 1.0f;
+                    if(c == 0)
+                        closeness = (float)srcrate / closeness;
+                    transient += get_sample((Uint8*)src + ((window_bottom+i)*srcfmt->channels+c)*srcb, srcfmt) * closeness;
+                    calibrate += closeness;
+                }
+                transient /= calibrate;
+                set_sample((Uint8*)tgt+(s*tgtfmt->channels+c)*tgtb, tgtfmt, transient);
+            }
         }
         /*
         float point = ratefactor*emitter->position; // point is position on emitter stream
@@ -321,6 +347,8 @@ int linear_resample_into_buffer
         sample /= calibrate;
         transient += sample;*/
     }
+    fwrite(tgt, 1, tgts, dumpfile);
+    fflush(dumpfile);
 }
 
 
@@ -339,6 +367,11 @@ struct wavstream : pcmstream
     Uint32 position; // Position is in OUTPUT SAMPLES, not SOUNDBYTE SAMPLES, i.e. it counts want.freqs not wavstream.freqs
     Uint8 * buffer = nullptr;
     Uint32 bufferlen;
+    
+    Uint16 channels()
+    {
+        return sample.format.channels;
+    }
     void * generateframe(SDL_AudioSpec * spec, unsigned int len, emitterinfo * info)
     {
         if(!sample.ready)
@@ -387,7 +420,7 @@ int linear_resample_into_buffer
         
         position += len;
         
-        if(position*sample.format.samplerate/spec->freq > sample.samples)
+        if(position*(Uint64)sample.format.samplerate/spec->freq > sample.samples)
             info->playing = false;
         
         return buffer;
@@ -640,16 +673,68 @@ struct emitter
 {
     pcmstream * stream;
     emitterinfo info;
-    void * generateframe(SDL_AudioSpec * spec, unsigned int len);
     
+    void * DSPbuffer = nullptr;
+    size_t DSPlen;
+    
+    void * generateframe(SDL_AudioSpec * spec, unsigned int len);
     void fire();
 };
+
+// srcbuffer must be smaller than tgtbuffer in *samples*
+int channel_cvt(void * tgtbuffer, void * srcbuffer, Uint32 samples, SDL_AudioSpec * tgtspec, Uint16 srcchannels)
+{
+    enum
+    {
+        UNSUPPORTED,
+        INVALID,
+        NOTHINGTODO,
+        GOOD
+    } returncodes;
+    
+    auto tgtchannels = tgtspec->channels;
+    
+    if ( srcchannels == 0 or tgtchannels == 0 )
+        return INVALID;
+    if ( ( srcchannels > 2 and tgtchannels != 1 )
+      or ( srcchannels != 1 and tgtchannels > 2 ))
+        return UNSUPPORTED;
+    if ( srcchannels == tgtchannels )
+        return NOTHINGTODO;
+    /*
+    if( srcchannels == 1 )
+    {
+        for(auto i = samples-1; i >= 0; i--)
+        {
+            for(auto  = 
+        }
+    }*/
+}
+
 void * emitter::generateframe(SDL_AudioSpec * spec, unsigned int len)
 {
     if(!info.playing)
         return nullptr;
-    auto r = stream->generateframe(spec, len, &info);
-    return r;
+    
+    if(stream->channels() == spec->channels)
+    {
+        return stream->generateframe(spec, len, &info);
+    }
+    else
+    {
+        SDL_AudioSpec temp = *spec;
+        temp.channels = stream->channels();
+        auto badbuffer = stream->generateframe(spec, len, &info);
+        auto goodlen = len*spec->channels*SDL_AUDIO_BITSIZE(spec->format)/8;
+        if(DSPlen != goodlen)
+            free(DSPbuffer);
+        if(DSPbuffer == nullptr)
+        {
+            DSPbuffer = malloc(goodlen);
+            channel_cvt(DSPbuffer, badbuffer, len, spec, temp.channels);
+        }
+    }
+    
 }
 void emitter::fire()
 {
@@ -679,6 +764,7 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
     {
         if(responses.size()>0)
             memcpy(stream, responses[0], len);
+        
         // TODO: mix responses
         //len++;
     }
@@ -689,6 +775,8 @@ int main(int argc, char * argv[])
     if(argc == 1)
         return 0 & puts("Usage: program file");
     wavstream sample(argv[1]);
+    
+    dumpfile = fopen("here!.raw", "wb");
     
     emitter output;
     output.stream = &sample;
