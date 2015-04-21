@@ -314,7 +314,7 @@ int linear_resample_into_buffer
             {
                 float transient = 0.0f;
                 float calibrate = 0.0f;
-                for(auto i = window_length; i > 0; i--) // convolution
+                for(auto i = 0; i <= window_length; i++) // convolution
                 {
                     if((window_bottom+i) > srcs or (window_top+i) < 0)
                         continue;
@@ -323,7 +323,7 @@ int linear_resample_into_buffer
                     transient += get_sample((Uint8*)src + ((window_bottom+i)*srcfmt->channels+c)*srcb, srcfmt) * closeness;
                     calibrate += closeness;
                 }
-                std::cout << calibrate << " " << (float)srcrate/tgtrate << "\n";
+                //std::cout << calibrate << " " << (float)srcrate/tgtrate << "\n";
                 transient /= calibrate;
                 set_sample((Uint8*)tgt+(s*tgtfmt->channels+c)*tgtb, tgtfmt, transient);
             }
