@@ -243,9 +243,10 @@ int linear_resample_into_buffer
             {
                 for(auto c = 0; c < srcfmt->channels; c++)
                 {
-                    auto which = position*srcfmt->channels+s+c;
-                    size_t from = (size_t)src + which*srcb;
-                    size_t to = (size_t)tgt + which*tgtb;
+                    auto whichfrom = (position+s)*srcfmt->channels+c;
+                    auto whichto = s*tgtfmt->channels+c;
+                    size_t from = (size_t)src + whichfrom*srcb;
+                    size_t to = (size_t)tgt + whichto*tgtb;
                     set_sample((Uint8*)to, tgtfmt, get_sample((Uint8*)from, srcfmt));
                 }
             }
@@ -258,25 +259,25 @@ int linear_resample_into_buffer
     {
         for(auto s = 0; s < tgts; s++)
         {
+            auto srcrate = srcfmt->samplerate;
+            auto tgtrate = tgtfmt->samplerate;
+            Uint64 which = position+s;
+            // f = (x%r)/r (needs real num precision for high numbers) == (ax%b)/b (only needs real num precision at the last value)
+            auto moire = (which*tgtrate) % srcrate;
+            float fraction = (float)moire / (srcrate);
+            
+            auto lower = which*srcrate/tgtrate; // integer division performs truncation
+            auto higher = lower;
+            if(moire > 0)
+                higher = lower + 1;
             for(auto c = 0; c < srcfmt->channels; c++)
             {
-                auto srcrate = srcfmt->samplerate;
-                auto tgtrate = tgtfmt->samplerate;
-                auto which = position*srcfmt->channels+s+c;
+                auto sample1 = get_sample((Uint8*)src+(lower*srcfmt->channels+c)*srcb, srcfmt);
+                auto sample2 = get_sample((Uint8*)src+(higher*srcfmt->channels+c)*srcb, srcfmt);
                 
-                float fraction = (float)((which*tgtrate) % srcrate) / (srcrate);
-                printf("%f\n", fraction);
+                float out = sample1*(1.0-fraction) + sample2*fraction;
                 
-                auto lower = which*srcrate/tgtrate;
-                /*auto higher = which+(;
-                
-                
-                get_sample((Uint8*)from, srcfmt)
-                
-                
-                size_t from = (size_t)src + which*srcb;
-                size_t to = (size_t)tgt + which*tgtb;
-                set_sample((Uint8*)to, tgtfmt, );*/
+                set_sample((Uint8*)tgt+(s*tgtfmt->channels+c)*tgtb, tgtfmt, out);
             }
         }
     }
@@ -369,7 +370,7 @@ int linear_resample_into_buffer
         
         position += len;
         
-        if(position > sample.samples)
+        if(position*sample.format.samplerate/spec->freq > sample.samples)
             info->playing = false;
         
         return buffer;
@@ -686,7 +687,7 @@ int main(int argc, char * argv[])
     want.freq = 44100;
     want.format = AUDIO_S16;
     want.channels = 2;
-    want.samples = 2001;
+    want.samples = 2048;
     want.callback = respondtoSDL;
     want.userdata = &want;
     SDL_AudioSpec got;
