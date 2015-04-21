@@ -187,7 +187,6 @@ void set_sample(Uint8 * addr, wavformat * fmt, float val)
     }
     puts("ayy");
 }
-FILE * fucklog;
 
 // Takes N channels, gives N channels
 int linear_resample_into_buffer
@@ -282,10 +281,6 @@ int linear_resample_into_buffer
             }
         }
     }
-    
-    fwrite(tgt, 1, tgtlen, fucklog);
-    fflush(fucklog);
-    
     
     /*
     else // difference > 0
@@ -677,7 +672,7 @@ int main(int argc, char * argv[])
     if(argc == 1)
         return 0 & puts("Usage: program file");
     wavstream sample(argv[1]);
-    fucklog = fopen("here!.raw", "wb");
+    
     emitter output;
     output.stream = &sample;
     output.info.pan = 0.0f;
