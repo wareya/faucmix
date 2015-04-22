@@ -797,13 +797,13 @@ int main(int argc, char * argv[])
     emitters.push_back(&output);
     
     SDL_AudioSpec want;
-    want.freq = 16000;
+    SDL_AudioSpec got;
+    want.freq = 1000;
     want.format = AUDIO_S16;
     want.channels = 2;
     want.samples = 1024;
     want.callback = respondtoSDL;
-    want.userdata = &want;
-    SDL_AudioSpec got;
+    want.userdata = &got;
     auto r = SDL_OpenAudio(&want, &got);
     if(r < 0)
     {
