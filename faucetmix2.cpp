@@ -219,8 +219,10 @@ int linear_resample_into_buffer
     };
     
     if(srcfmt->channels != tgtfmt->channels)
+    {
+        puts("invalid channel configuration");
         return INVALID;
-    
+    }
     auto channels = srcfmt->channels;
     
     Sint64 difference = (Sint64)tgtfmt->samplerate - srcfmt->samplerate;
@@ -232,7 +234,6 @@ int linear_resample_into_buffer
     
     if(difference == 0)
     {
-        puts("SAME");
         Sint32 overrun = tgts+position - srcs;
         overrun = overrun>0? overrun : 0;
         if(overrun)
@@ -265,7 +266,6 @@ int linear_resample_into_buffer
     
     else if (difference > 0) // upsample, use triangle filter to artificially create SUPER RETRO SOUNDING highs
     {
-        puts("UP");
         for(auto s = 0; s < tgts; s++)
         {
             auto srcrate = srcfmt->samplerate;
@@ -380,14 +380,22 @@ struct wavstream : pcmstream
     void * generateframe(SDL_AudioSpec * spec, unsigned int len, emitterinfo * info)
     {
         if(!sample.ready)
+        {
+            puts("not ready");
             return nullptr;
-        
+        }
         if(!sample.data)
+        {
+            puts("no data");
             return nullptr;
+        }
         
         Uint32 specblock = spec->channels*(SDL_AUDIO_BITSIZE(spec->format))/8; // spec blocksize
         if(specblock == 0)
+        {
+            puts("invalid spec");
             return nullptr;
+        }
         
         auto outputsize = len; // output bytes 
         len /= specblock; // output samples
@@ -426,8 +434,9 @@ int linear_resample_into_buffer
         position += len;
         
         if(position*(Uint64)sample.format.samplerate/spec->freq > sample.samples)
+        {
             info->playing = false;
-        
+        }
         return buffer;
     }
     void fire(emitterinfo * info)
@@ -686,6 +695,47 @@ struct emitter
     void fire();
 };
 
+
+// writes n width-byte-wide values to tgt
+int memwrite(void * tgt, Uint64 value, size_t n, int width)
+{
+    Uint64 mask = 0;
+    switch(width)
+    {
+    case 1:
+        mask = 0xFF;
+        break;
+    case 2:
+        mask = 0xFFFF;
+        break;
+    case 3:
+        mask = 0xFFFFFF;
+        break;
+    case 4:
+        mask = 0xFFFFFFFF;
+        break;
+    case 5:
+        mask = 0xFFFFFFFFFF;
+        break;
+    case 6:
+        mask = 0xFFFFFFFFFFFF;
+        break;
+    case 7:
+        mask = 0xFFFFFFFFFFFFFF;
+        break;
+    case 8:
+        mask = 0xFFFFFFFFFFFFFFFF;
+        break;
+    }
+    value = value & mask;
+    for(auto i = 0; i < n*width; i += width)
+    {
+        for(auto j = 0; j < width; j++)
+            ((Uint8*)tgt)[i,j] = ((Uint8*)&value)[j]; // [i,j]?????????
+    }
+}
+
+
 // srcbuffer must be smaller than tgtbuffer in *samples*
 int channel_cvt(void * tgtbuffer, void * srcbuffer, Uint32 samples, SDL_AudioSpec * tgtspec, Uint16 srcchannels)
 {
@@ -694,26 +744,71 @@ int channel_cvt(void * tgtbuffer, void * srcbuffer, Uint32 samples, SDL_AudioSpe
         UNSUPPORTED,
         INVALID,
         NOTHINGTODO,
-        GOOD
+        UP,
+        DOWN
     } returncodes;
     
     auto tgtchannels = tgtspec->channels;
     
-    if ( srcchannels == 0 or tgtchannels == 0 )
-        return INVALID;
-    if ( ( srcchannels > 2 and tgtchannels != 1 )
-      or ( srcchannels != 1 and tgtchannels > 2 ))
-        return UNSUPPORTED;
+    /* Supported modes:
+       mono -> n
+       n -> mono
+       up to 16 channels
+    */
+    
     if ( srcchannels == tgtchannels )
         return NOTHINGTODO;
-    /*
-    if( srcchannels == 1 )
-    {
-        for(auto i = samples-1; i >= 0; i--)
+    if ( srcchannels == 0 or tgtchannels == 0 )
+        return INVALID;
+    if ( srcchannels != 1 and tgtchannels != 1 )
+        return UNSUPPORTED;
+    if ( srcchannels > 16 or tgtchannels > 16 )
+        return UNSUPPORTED;
+    
+    auto bitdepth = SDL_AUDIO_BITSIZE(tgtspec->format);
+    if ( bitdepth % 8  or bitdepth == 0 )
+        return UNSUPPORTED;
+    
+    auto bytedepth = bitdepth/8;
+    
+    if ( srcchannels == 1 )
+    {   // duplicate source channels
+        Uint64 mask = 0;
+        switch(bytedepth)
         {
-            for(auto  = 
+        case 1:
+            mask = 0xFF;
+            break;
+        case 2:
+            mask = 0xFFFF;
+            break;
+        case 3:
+            mask = 0xFFFFFF;
+            break;
+        case 4:
+            mask = 0xFFFFFFFF;
+            break;
+        case 8:
+            mask = 0xFFFFFFFFFFFFFFFF;
+            break;
         }
-    }*/
+        if(SDL_AUDIO_ISSIGNED(tgtspec->format))
+            memset(tgtbuffer, 0, samples*bytedepth*tgtchannels);
+        else // unsigned
+            memwrite(tgtbuffer, mask/2+1, samples*tgtchannels, bytedepth);
+            //memset(tgtbuffer, 0x80, samples*bytedepth*tgtchannels);
+        for(auto i = 0; i < samples; i++)
+        {
+            void * addr = (Uint8*)srcbuffer + i*bytedepth;
+            Uint64 smpbuff = *(Uint64*)addr;
+            for(auto c = 0; c < tgtchannels; c++)
+            {
+                for(auto j = 0; j < bytedepth; j++)
+                    (((Uint8*)tgtbuffer)+(i*tgtchannels+c)*bytedepth)[j] = ((Uint8*)&smpbuff)[j];
+            }
+        }
+        return UP;
+    }
 }
 
 void * emitter::generateframe(SDL_AudioSpec * spec, unsigned int len)
@@ -724,23 +819,22 @@ void * emitter::generateframe(SDL_AudioSpec * spec, unsigned int len)
     if(stream->channels() == spec->channels)
     {
         return stream->generateframe(spec, len, &info);
-        puts("c");
     }
     else
     {
-        printf("%d\n", spec->channels);
-        puts("x");
         SDL_AudioSpec temp = *spec;
         temp.channels = stream->channels();
-        auto badbuffer = stream->generateframe(spec, len, &info);
-        auto goodlen = len*spec->channels*SDL_AUDIO_BITSIZE(spec->format)/8;
+        auto badbuffer = stream->generateframe(&temp, len*temp.channels/spec->channels, &info);
+        auto goodlen = len;
         if(DSPlen != goodlen and DSPbuffer != nullptr)
             free(DSPbuffer);
         if(DSPbuffer == nullptr)
         {
             DSPbuffer = malloc(goodlen);
-            channel_cvt(DSPbuffer, badbuffer, len, spec, temp.channels);
+            DSPlen = goodlen;
         }
+        int r = channel_cvt(DSPbuffer, badbuffer, len, spec, temp.channels);
+        return DSPbuffer;
     }
     
 }
@@ -798,9 +892,9 @@ int main(int argc, char * argv[])
     
     SDL_AudioSpec want;
     SDL_AudioSpec got;
-    want.freq = 1000;
+    want.freq = 8000;
     want.format = AUDIO_S16;
-    want.channels = 2;
+    want.channels = 1;
     want.samples = 1024;
     want.callback = respondtoSDL;
     want.userdata = &got;
@@ -812,13 +906,14 @@ int main(int argc, char * argv[])
     }
     
     printf("%d\n", got.freq);
+    printf("%d\n", got.samples);
     
     output.fire();
     
     SDL_PauseAudio(0);
-    puts("a");
+    
     while(output.info.playing)
-        SDL_Delay(10);
+        SDL_Delay(1000);
     
     return 0;
 }
