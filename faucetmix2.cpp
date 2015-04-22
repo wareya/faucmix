@@ -320,7 +320,7 @@ int linear_resample_into_buffer
                 {
                     if((window_bottom+i) > srcs or (window_top+i) < 0)
                         continue;
-                    Sint32 hiorder_closeness = srcrate - abs(i*tgtrate - hiorder_bottom - tgtrate);
+                    Sint64 hiorder_closeness = srcrate - abs(i*tgtrate - hiorder_bottom - tgtrate);
                     float closeness = hiorder_closeness / (double)srcrate;
                     transient += get_sample((Uint8*)src + ((window_bottom+i)*srcfmt->channels+c)*srcb, srcfmt) * closeness;
                     calibrate += closeness;
@@ -797,10 +797,10 @@ int main(int argc, char * argv[])
     emitters.push_back(&output);
     
     SDL_AudioSpec want;
-    want.freq = 8000;
+    want.freq = 32000;
     want.format = AUDIO_S16;
     want.channels = 2;
-    want.samples = 2048;
+    want.samples = 1024;
     want.callback = respondtoSDL;
     want.userdata = &want;
     SDL_AudioSpec got;
