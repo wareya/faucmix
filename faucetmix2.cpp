@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <vector>
+#include <deque>
 #include <atomic>
 #include <string>
 
@@ -399,7 +400,7 @@ struct wavstream : pcmstream
         
         auto outputsize = len; // output bytes 
         len /= specblock; // output samples
-        if(outputsize != bufferlen)
+        if(outputsize != bufferlen and buffer != nullptr)
         {
             free(buffer);
             buffer = nullptr;
@@ -744,6 +745,7 @@ int channel_cvt(void * tgtbuffer, void * srcbuffer, Uint32 samples, SDL_AudioSpe
         UNSUPPORTED,
         INVALID,
         NOTHINGTODO,
+        UNKNOWN,
         UP,
         DOWN
     } returncodes;
@@ -791,11 +793,11 @@ int channel_cvt(void * tgtbuffer, void * srcbuffer, Uint32 samples, SDL_AudioSpe
         case 8:
             mask = 0xFFFFFFFFFFFFFFFF;
             break;
-        }
+        }/*
         if(SDL_AUDIO_ISSIGNED(tgtspec->format))
             memset(tgtbuffer, 0, samples*bytedepth*tgtchannels);
         else // unsigned
-            memwrite(tgtbuffer, mask/2+1, samples*tgtchannels, bytedepth);
+            memwrite(tgtbuffer, mask/2+1, samples*tgtchannels, bytedepth);*/
             //memset(tgtbuffer, 0x80, samples*bytedepth*tgtchannels);
         for(auto i = 0; i < samples; i++)
         {
@@ -809,6 +811,24 @@ int channel_cvt(void * tgtbuffer, void * srcbuffer, Uint32 samples, SDL_AudioSpe
         }
         return UP;
     }
+    if ( tgtchannels == 1 )
+    {
+        wavformat fmt = audiospec_to_wavformat(tgtspec); // don't need to set/fix channels because get_sample can't use non-sampleformat info
+        for(auto i = 0; i < samples; i++)
+        {
+            void * addr = (Uint8*)srcbuffer + i*bytedepth;
+            float transient = 0.0f;
+            for(auto c = 0; c < srcchannels; c++)
+            {
+                transient += get_sample((Uint8*)srcbuffer+(i*srcchannels+c)*bytedepth, &fmt);
+            }
+            transient /= srcchannels;
+            set_sample((Uint8*)tgtbuffer+i*bytedepth, &fmt, transient);
+        }
+        return DOWN;
+    }
+    
+    return UNKNOWN;
 }
 
 void * emitter::generateframe(SDL_AudioSpec * spec, unsigned int len)
@@ -827,9 +847,13 @@ void * emitter::generateframe(SDL_AudioSpec * spec, unsigned int len)
         auto badbuffer = stream->generateframe(&temp, len*temp.channels/spec->channels, &info);
         auto goodlen = len;
         if(DSPlen != goodlen and DSPbuffer != nullptr)
+        {
             free(DSPbuffer);
+            DSPbuffer = nullptr;
+        }
         if(DSPbuffer == nullptr)
         {
+            std::cout << goodlen << "\n";
             DSPbuffer = malloc(goodlen);
             DSPlen = goodlen;
         }
@@ -844,6 +868,7 @@ void emitter::fire()
 }
 
 std::vector<emitter *> emitters;
+std::deque<void *> responses;
 
 void respondtoSDL(void * udata, Uint8 * stream, int len)
 {
@@ -855,12 +880,13 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
     
     int stream_LE = SDL_AUDIO_ISLITTLEENDIAN(spec.format);
     
-    std::vector<void *> responses;
     for(auto stream : emitters)
     {
         auto f = stream->generateframe(&spec, len);
         if(f != nullptr)
+        {
             responses.push_back(f);
+        }
     }
     //while(used < len)
     {
@@ -870,6 +896,7 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
         // TODO: mix responses
         //len++;
     }
+    responses.clear();
 }
 
 int main(int argc, char * argv[])
