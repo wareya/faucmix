@@ -39,6 +39,8 @@ struct pcmstream
     {}
     virtual bool isplaying()
     {}
+    virtual bool ready()
+    {}
     virtual Uint16 channels()
     {}
     virtual void fire(emitterinfo * info)
@@ -367,6 +369,10 @@ struct wavstream : pcmstream
     Uint8 * buffer = nullptr;
     Uint32 bufferlen;
     
+    bool ready()
+    {
+        return sample.ready;
+    }
     Uint16 channels()
     {
         return sample.format.channels;
@@ -712,20 +718,23 @@ int channel_cvt(void * tgtbuffer, void * srcbuffer, Uint32 samples, SDL_AudioSpe
 
 void * emitter::generateframe(SDL_AudioSpec * spec, unsigned int len)
 {
-    if(!info.playing)
+    if(!info.playing or !stream->ready())
         return nullptr;
     
     if(stream->channels() == spec->channels)
     {
         return stream->generateframe(spec, len, &info);
+        puts("c");
     }
     else
     {
+        printf("%d\n", spec->channels);
+        puts("x");
         SDL_AudioSpec temp = *spec;
         temp.channels = stream->channels();
         auto badbuffer = stream->generateframe(spec, len, &info);
         auto goodlen = len*spec->channels*SDL_AUDIO_BITSIZE(spec->format)/8;
-        if(DSPlen != goodlen)
+        if(DSPlen != goodlen and DSPbuffer != nullptr)
             free(DSPbuffer);
         if(DSPbuffer == nullptr)
         {
@@ -807,6 +816,7 @@ int main(int argc, char * argv[])
     output.fire();
     
     SDL_PauseAudio(0);
+    puts("a");
     while(output.info.playing)
         SDL_Delay(10);
     
