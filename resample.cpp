@@ -107,11 +107,13 @@ int linear_resample_into_buffer
         {
             auto srcrate = srcfmt->samplerate;
             auto tgtrate = tgtfmt->samplerate;
-            Sint64 which = position+s;
+            Uint64 which = position+s;
             
             // Fun fact: you can use integer division as a kind of floor/ceil!
-            Sint32 window_bottom = (which*srcrate-srcrate)/tgtrate + ((which%tgtrate != 0)?1:0); // that addition part is the ceil
-            Sint32 window_top = (which*srcrate+srcrate)/tgtrate;
+            Sint64 temp1 = (which*srcrate+srcrate);
+            Sint64 temp2 = (which*srcrate-srcrate);
+            Sint32 window_bottom = temp2/tgtrate + ((temp2%tgtrate)?1:0); // that addition part is the ceil
+            Sint32 window_top = temp1/tgtrate;
             int window_length = window_top - window_bottom;
             //printf("%d %d %d\n", window_bottom, window_top, window_length);
             
@@ -123,7 +125,6 @@ int linear_resample_into_buffer
             for(auto c = 0; c < channels; c++)
             {
                 float transient = 0.0f;
-                float calibrate2 = 0.0f;
                 float calibrate = (float)srcrate/tgtrate;
                 for(auto i = 0; i <= window_length; i++) // convolution
                 {
@@ -134,35 +135,26 @@ int linear_resample_into_buffer
                     if(hiorder_distance < 0)
                         hiorder_distance = -hiorder_distance;
                     
-                    if(hiorder_distance >= hiorder_winheight) // failsafe
+                    if(hiorder_distance > hiorder_winheight) // failsafe
+                    {
+                        puts("fuck");
+                        printf("%d %d %d\n", window_bottom, window_top, i);
+                        float ratefactor = (float)srcrate/tgtrate;
+                        printf("%f\n", which*ratefactor - ratefactor);
+                        printf("%ld %d %ld\n", which, tgtrate, (which*srcrate-srcrate)%tgtrate);
+                        printf("%f\n", ceil(which*ratefactor - ratefactor));
+                        printf("%f\n", floor(which*ratefactor + ratefactor));
+                        printf("%ld %ld %d %d\n", (i*tgtrate+hiorder_bottom), hiorder_position, i, hiorder_distance);
                         continue;
-                    
+                    }
                     Uint32 hiorder_closeness = hiorder_winheight - hiorder_distance;
                     
-                    float closeness = hiorder_closeness/(float)hiorder_winheight;
+                    double closeness = hiorder_closeness/(float)hiorder_winheight;
                     transient += get_sample((Uint8*)src + ((window_bottom+i)*srcfmt->channels+c)*srcb, srcfmt) * closeness;
-                    calibrate2 += closeness;
                 }
                 transient /= calibrate;
                 set_sample((Uint8*)tgt+(s*tgtfmt->channels+c)*tgtb, tgtfmt, transient);
             }
         }
-        /*
-        float point = ratefactor*emitter->position; // point is position on emitter stream
-        int bottom = ceil(point-ratefactor); // window
-        int top = floor(point+ratefactor);
-        float windowlen = ratefactor*2;
-        
-        float calibrate = 0; // convolution normalization
-        float sample = 0; // output sample
-        for(float j = ceil(bottom); j < top; j++) // convolution
-        {
-            float factor = j>point?j-point:point-j; // distance from output sample
-            factor = ratefactor - factor; // convolution index of this sample
-            calibrate += factor;
-            sample += emitter->sample->sample_from_channel_and_position(i, j) * factor;
-        }
-        sample /= calibrate;
-        transient += sample;*/
     }
 }
