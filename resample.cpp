@@ -1,5 +1,7 @@
 #include "resample.hpp"
 
+#include <iostream>
+
 // Takes N channels, gives N channels
 int linear_resample_into_buffer
 ( Uint32 position
@@ -53,7 +55,7 @@ int linear_resample_into_buffer
         }
         else // have to expand or crush 
         {
-            for(auto s = 0; s < tgts; s++)
+            for(unsigned s = 0; s < tgts; s++)
             {
                 for(auto c = 0; c < srcfmt->channels; c++)
                 {
@@ -71,7 +73,7 @@ int linear_resample_into_buffer
     
     else if (difference > 0) // upsample, use triangle filter to artificially create SUPER RETRO SOUNDING highs
     {
-        for(auto s = 0; s < tgts; s++)
+        for(unsigned s = 0; s < tgts; s++)
         {
             auto srcrate = srcfmt->samplerate;
             auto tgtrate = tgtfmt->samplerate;
@@ -101,7 +103,7 @@ int linear_resample_into_buffer
     {   // downsample, use triangle filter for laziness's sake
         // convert input position to surrounding output positions
         
-        for(auto s = 0; s < tgts; s++)
+        for(unsigned s = 0; s < tgts; s++)
         {
             auto srcrate = srcfmt->samplerate;
             auto tgtrate = tgtfmt->samplerate;
@@ -114,23 +116,33 @@ int linear_resample_into_buffer
             //printf("%d %d %d\n", window_bottom, window_top, window_length);
             
             Uint64 hiorder_position = which * srcrate;
-            Uint64 hiorder_bottom = hiorder_position - (window_bottom * tgtrate);
+            Uint64 hiorder_bottom = (window_bottom * tgtrate);
             Uint64 hiorder_winlen = 2*srcrate;
+            Uint64 hiorder_winheight = srcrate;
             
             for(auto c = 0; c < channels; c++)
             {
                 float transient = 0.0f;
-                float calibrate = 0.0f;
+                float calibrate2 = 0.0f;
+                float calibrate = (float)srcrate/tgtrate;
                 for(auto i = 0; i <= window_length; i++) // convolution
                 {
                     if((window_bottom+i) > srcs or (window_top+i) < 0)
                         continue;
-                    Uint32 hiorder_closeness = abs(i*tgtrate - hiorder_bottom - tgtrate);
-                    float closeness = double((Sint64)srcrate - hiorder_closeness) / srcrate;
+                    
+                    Sint32 hiorder_distance = (Sint64)(i*tgtrate+hiorder_bottom) - hiorder_position;
+                    if(hiorder_distance < 0)
+                        hiorder_distance = -hiorder_distance;
+                    
+                    if(hiorder_distance >= hiorder_winheight) // failsafe
+                        continue;
+                    
+                    Uint32 hiorder_closeness = hiorder_winheight - hiorder_distance;
+                    
+                    float closeness = hiorder_closeness/(float)hiorder_winheight;
                     transient += get_sample((Uint8*)src + ((window_bottom+i)*srcfmt->channels+c)*srcb, srcfmt) * closeness;
-                    calibrate += closeness;
+                    calibrate2 += closeness;
                 }
-                //std::cout << calibrate << " " << (float)srcrate/tgtrate << "\n";
                 transient /= calibrate;
                 set_sample((Uint8*)tgt+(s*tgtfmt->channels+c)*tgtb, tgtfmt, transient);
             }
