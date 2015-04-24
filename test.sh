@@ -79,7 +79,7 @@ else
     fi
 fi
 
-cmd="g++ -std=c++11 -Wall -Wno-unused -Wno-sign-compare -Wno-return-type -Wfatal-errors $cflags"
+cmd="g++ -std=c++11 -Wall -pedantic -Wno-unused -Wno-sign-compare -Wno-return-type -Wfatal-errors $cflags"
 
 if [ $OSTYPE == "msys" ]; then
     console="-mconsole"

@@ -149,7 +149,7 @@ int linear_resample_into_buffer
                     }
                     Uint32 hiorder_closeness = hiorder_winheight - hiorder_distance;
                     
-                    double closeness = hiorder_closeness/(float)hiorder_winheight;
+                    double closeness = hiorder_closeness/(float)hiorder_winheight; // NOTE: Should "closeness" be done in hiorder space?
                     transient += get_sample((Uint8*)src + ((window_bottom+i)*srcfmt->channels+c)*srcb, srcfmt) * closeness;
                 }
                 transient /= calibrate;
