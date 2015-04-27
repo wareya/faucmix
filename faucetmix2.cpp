@@ -1,5 +1,5 @@
 // Coypright 2015 Alexander "wareya" Nadeau <wareya@gmail.com>
-// Available under either the ISC or zlib licenses.
+// Available under either the ISC or zlib license.
 
 #include "emitter.hpp"
 #include "wavstream.hpp"
@@ -11,11 +11,6 @@
 #undef main
 #include <stdio.h>
 #include <iostream>
-
-std::vector<emitter *> emitters;
-std::deque<void *> responses;
-
-FILE * dumpfile;
 
 void respondtoSDL(void * udata, Uint8 * stream, int len)
 {
@@ -60,30 +55,22 @@ int main(int argc, char * argv[])
     
     emitters.push_back(&output);
     
-    SDL_AudioSpec want;
-    SDL_AudioSpec got;
-    want.freq = 44100;
-    want.format = AUDIO_S16;
-    want.channels = 2;
-    want.samples = 1024;
-    want.callback = respondtoSDL;
-    want.userdata = &got;
-    auto r = SDL_OpenAudio(&want, &got);
-    if(r < 0)
-    {
-        puts("Failed to open device");
-        std::cout << SDL_GetError();
-    }
-    
-    printf("%d\n", got.freq);
-    printf("%d\n", got.samples);
     
     output.fire();
     
     SDL_PauseAudio(0);
     
     while(output.info.playing)
+    {
         SDL_Delay(1000);
+        emitter output2;
+        output2.stream = &sample;
+        output2.info.pan = 0.0f;
+        output2.info.volume = 1.0f;
+        output2.info.playing = true;
+        output2.info.loop = true;
+        output2.info.mixdown = 1.0f;
+    }
     
     return 0;
 }

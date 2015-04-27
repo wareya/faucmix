@@ -1,0 +1,132 @@
+API draft for faucet mixer.
+
+Functionality enclosed in braces {} is not intended for the first version.
+
+fauxmix will be used in place of faucmix throughout for humor's sake.
+
+ fauxmix_dll_init()
+Sets up internal state, including defaults.
+*Must be called before any other function.*
+
+ fauxmix_use_float_output(true/false)
+Used to choose between 16-bit int or 32-bit float audio output.
+Default: false (16-bit int)
+ Requirements:
+Init must not have been called.
+
+ fauxmix_init(samplerate, ismono, samples)
+Tells the library to open up its connection with SDL. Each argument is passed
+directly to SDL, and is not guarenteed.
+ Explanation:
+samplerate is the frequency of the output stream in PCM samples per second.
+ismono: 2channel if false, 1channel if true.
+samples is the number of samples fauxmix asks SDL to ask it for every frame;
+higher values result in more latency, but less CPU usage. Audio latency should
+be somewhere in the neighborhood of 2*samples/samplerate.
+ Requirements:
+Must not have already been called.
+{
+ channel setup enumeration instead of ismono
+}
+ fauxmix_get_samplerate()
+Returns the actual samplerate of the output stream.
+ Requirements:
+Init needs to have been called.
+
+ fauxmix_get_channels()
+Returns the actual channel count of the output stream.
+ Requirements:
+Init needs to have been called.
+
+ fauxmix_get_samples()
+Returns the actual frame sample count of the output stream.
+ Requirements:
+Init needs to have been called.
+{
+ fauxmix_use_ducker(true/false)
+Tells the library whether or not to use the built-in ducker.
+ Explanation:
+The built-in ducker lowers the output volume temporarily starting with a peak
+sample that passes the output volume limits. This prevents clipping on 16-bit
+output and certain audio output systems, but for the sake of transparency, it
+can be disabled.
+ Default: on
+}
+ bool fauxmix_is_ducking()
+Returns whether the library is currently ducking. Useful for diagnostics.
+
+ fauxmix_set_fadetime(milliseconds)
+Tells the library the period of time over which to interpolate volume/panning
+changes on *all* emitters.
+ Explanation:
+This is fundamental functionality; if all changes are instant, they all cause
+pops and clicks. Near-instant changes still cause noticable crackling-like
+frequency distortion, even if they're starting to get softer. Therefore, we have
+to measure volume changes etc in time, not samples. A function to change this is
+available for people who think that the default value is too low or high.
+ Default: 5ms (all noticable distortion below 200hz)
+ Limit: 100ms
+ Notes: Fading does not apply to fully stopped emitters.
+
+ fauxmix_set_global_volume(volume)
+Sets the peak volume of the entire output stream.
+
+The following functions can only be used once the library has been initialized.
+
+ fauxmix_sample_load(filename)
+Loads a sample into memory for use by emitters.
+Supports: .wav[x], .flac[ ], .tta[ ], .opus[ ]
+ fauxmix_sample_volume()
+Sets the base volume of a sample across all emitters it may be used by.
+ fauxmix_sample_kill(sample)
+Immediately removes a sample from memory and clips off the output of any
+emitters that are using it.
+ fauxmix_sample_isready(sample)
+Returns whether a sample has finished loading and is ready to play.
+{
+ fauxmix_sample_use_cuepoints(sample)
+Tell fauxmix that this sample should use cue points, if there are any in the
+sample file, to control where to loop to/from.
+}
+
+ fauxmix_emitter_create(sample)
+Creates an emitter with an associated sample.
+ fauxmix_emitter_sample()
+Returns the associated sample of an emitter.
+ fauxmix_emitter_clone(emitter)
+Copies an emitter except for its volume, pan, etc.
+ fauxmix_emitter_volume(emitter, volume)
+Sets the peak volume of an emitter. Uses peak channel.
+ fauxmix_emitter_volumes(emitter, left, right)
+Sets the peak volume per stereo channel.
+ fauxmix_emitter_panning(emitter, panning)
+Sets the left/right balance of an emitter. Linear ratio. Uses peak channel.
+ fauxmix_emitter_fire(emitter)
+Fires an emitter. (plays sound) If the sample is not ready, it will play it as
+soon as it is ready.
+ fauxmix_emitter_fire_loop(emitter)
+Fires an emitter. (loops endlessly)
+ fauxmix_emitter_stop(emitter)
+Gracefully (non-clicking) stops an emitter.
+ fauxmix_emitter_brake(emitter)
+Emitter will keep going until it reaches the end of its sample. (used on loops)
+ fauxmix_emitter_cease(emitter)
+Ceases output instantly. Can/will click.
+ fauxmix_emitter_kill(emitter)
+Kills an emitter. Also ceases output instantly.
+ fauxmix_emitter_isready(emitter)
+Short for fauxmix_sample_isready(fauxmix_emitter_sample()).
+
+{
+ fauxmix_stream_create(filename)
+Creates a streaming output source from a certain file. Does not load the sample
+into memory, but is limited at runtime by harddrive speed, fails if the file
+ceases to be accessible, and cannot be used through emitters.
+ Supports: .wav[ ], .flac[ ], .tta[ ], .opus[ ]
+
+ fauxmix_stream_stop(stream)
+Gracefully (non-clicking) stops a stream and destroys the output handle and file
+handle.
+ fauxmix_stream_kill(stream)
+Clips off the output of a stream and destroys the file and output handles.
+}
