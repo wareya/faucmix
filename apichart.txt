@@ -1,0 +1,44 @@
+ fauxmix_dll_init()
+ 
+ 
+ fauxmix_use_float_output(true/false)
+Init must not have been called.
+
+ fauxmix_init(samplerate, ismono, samples)
+ fauxmix_get_samplerate()
+ fauxmix_get_channels()
+ fauxmix_get_samples()
+ 
+ bool fauxmix_is_ducking()
+ //fauxmix_set_fadetime(milliseconds)
+ //fauxmix_set_global_volume(volume)
+
+The following functions can only be used once the library has been initialized.
+
+ sample fauxmix_sample_load(filename)
+ int fauxmix_sample_status(sample)
+  Returns the loading state of the sample.
+  0  - Still loading
+  1  - Successfully loaded and playable
+  -1 - Failed loading (IO or validity error)
+ fauxmix_sample_volume(volume)
+ fauxmix_sample_kill(sample)
+
+ fauxmix_emitter_create(sample)
+ //fauxmix_emitter_clone(emitter)
+ 
+ fauxmix_emitter_sample()
+ fauxmix_emitter_isready(emitter)
+ 
+ fauxmix_emitter_volumes(emitter, left, right)
+ //fauxmix_emitter_volume(emitter, volume)
+ //fauxmix_emitter_pan(emitter, panning)
+ 
+ fauxmix_emitter_fire(emitter)
+ //fauxmix_emitter_fire_loop(emitter)
+ 
+ fauxmix_emitter_cease(emitter)
+ //fauxmix_emitter_stop(emitter)
+ //fauxmix_emitter_brake(emitter)
+ 
+ fauxmix_emitter_kill(emitter)

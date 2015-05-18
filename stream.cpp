@@ -10,3 +10,5 @@ Uint16 pcmstream::channels()
 {}
 void pcmstream::fire(emitterinfo * info)
 {}
+void pcmstream::cease(emitterinfo * info)
+{}

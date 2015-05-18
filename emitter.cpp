@@ -1,7 +1,18 @@
 #include "emitter.hpp"
 #include "channels.hpp"
+#include "wavstream.hpp"
 
 #include <iostream>
+
+emitter::emitter(wavfile * sample)
+{
+    stream = new wavstream(sample);
+    info.playing = false;
+}
+emitter::~emitter()
+{
+    delete stream;
+}
 
 void * emitter::generateframe(SDL_AudioSpec * spec, unsigned int len)
 {
@@ -18,9 +29,7 @@ void * emitter::generateframe(SDL_AudioSpec * spec, unsigned int len)
         temp.channels = stream->channels();
         auto badbuffer = stream->generateframe(&temp, len*temp.channels/spec->channels, &info);
         auto goodlen = len;
-        #if 0
-        if while do break emitter this "asdf" 0 sizeof
-        #endif
+        
         if(DSPlen != goodlen and DSPbuffer != nullptr)
         {
             free(DSPbuffer);
@@ -40,4 +49,8 @@ void * emitter::generateframe(SDL_AudioSpec * spec, unsigned int len)
 void emitter::fire()
 {
     stream->fire(&info);
+}
+void emitter::cease()
+{
+    stream->cease(&info);
 }

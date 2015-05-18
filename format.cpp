@@ -55,7 +55,7 @@ float get_sample(void * addr, wavformat * fmt)
     return trans;
 }
 
-void set_sample(Uint8 * addr, wavformat * fmt, float val)
+void set_sample(void * addr, wavformat * fmt, float val)
 {
     if(fmt->bytespersample == 1)
     {
@@ -75,9 +75,9 @@ void set_sample(Uint8 * addr, wavformat * fmt, float val)
         Uint32 inter = (double)val*fmt->slowdatagain;
         inter = inter&0xFFFFFF00;
         auto inter2 = (Uint8*)&inter;
-        *(Uint8*)(addr  ) = *(inter2+1); // TODO: There has got to be a better way to do this.
-        *(Uint8*)(addr+1) = *(inter2+2); 
-        *(Uint8*)(addr+2) = *(inter2+3); 
+        *((Uint8*)(addr)+0) = *(inter2+1); // TODO: There has got to be a better way to do this.
+        *((Uint8*)(addr)+1) = *(inter2+2); 
+        *((Uint8*)(addr)+2) = *(inter2+3); 
         return;
     }
     if(fmt->bytespersample == 4)

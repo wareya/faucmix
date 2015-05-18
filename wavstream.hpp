@@ -4,14 +4,15 @@
 #include "stream.hpp"
 #include "emitter.hpp"
 #include "format.hpp"
+#include "wavfile.hpp"
 
 #include <SDL2/SDL_audio.h>
 
 struct wavstream : pcmstream
 {
-    wavfile sample;
+    wavfile * sample;
     
-    wavstream(const char * filename); // TODO: SEPARATE INSTANTIATION OF WAVSTREAM FROM WAVFILE
+    wavstream(wavfile * given); // TODO: SEPARATE INSTANTIATION OF WAVSTREAM FROM WAVFILE
     
     Uint32 position; // Position is in OUTPUT SAMPLES, not SOUNDBYTE SAMPLES, i.e. it counts got.freqs not wavstream.freqs
     Uint8 * buffer = nullptr;
@@ -21,6 +22,10 @@ struct wavstream : pcmstream
     Uint16 channels();
     void * generateframe(SDL_AudioSpec * spec, unsigned int len, emitterinfo * info);
     void fire(emitterinfo * info);
+    void cease(emitterinfo * info);
+    
+    ~wavstream();
+
 };
 int t_wavfile_load(void * etc);
 

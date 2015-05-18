@@ -1,6 +1,7 @@
 #include "resample.hpp"
 
 #include <iostream>
+#include <math.h>
 
 // Takes N channels, gives N channels
 int linear_resample_into_buffer

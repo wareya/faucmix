@@ -14,6 +14,9 @@ struct pcmstream
     virtual bool ready();
     virtual Uint16 channels();
     virtual void fire(emitterinfo * info);
+    virtual void cease(emitterinfo * info);
+    
+    virtual ~pcmstream() {};
 };
 
 #endif

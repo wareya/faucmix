@@ -22,11 +22,11 @@ Uint64 ipower(type b, type n)
 
 struct emitterinfo
 {
-    float pan;
-    float volume;
-    bool loop;
-    bool playing;
-    float mixdown;
+    float pan = 0.0f;
+    float volume = 1.0f;
+    std::atomic<bool> playing;
+    bool loop = false;
+    float mixdown = 1.0f;
 };
 
 struct wavformat
@@ -40,21 +40,8 @@ struct wavformat
     double slowdatagain;
 };
 
-struct wavfile
-{
-    std::atomic<bool> ready;
-    
-    Uint8 * fmt = nullptr;
-    Uint8 * data = nullptr;
-    Uint32 samples;
-    Uint32 bytes;
-    
-    std::string stored;
-    wavformat format;
-};
-
 wavformat audiospec_to_wavformat(SDL_AudioSpec * from);
 float get_sample(void * addr, wavformat * fmt);
-void set_sample(Uint8 * addr, wavformat * fmt, float val);
+void set_sample(void * addr, wavformat * fmt, float val);
 
 #endif
