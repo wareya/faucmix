@@ -15,6 +15,8 @@
 #include <iostream>
 #include <math.h>
 
+#include <stdlib.h>
+
 std::set<emitter *> emitters;
 std::vector<void *> responses;
 
@@ -23,9 +25,11 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
     auto& spec = *(SDL_AudioSpec *)udata;
     auto fmt = audiospec_to_wavformat(&spec);
     
-    auto sample = fmt.bytespersample;
     auto block = fmt.blocksize;
-    const int channels = spec.channels;
+    auto sample = fmt.bytespersample;
+    int channels = spec.channels;
+    
+    std::cout << block << " " << int(sample) << " " << channels << "\n";
     
     for(auto stream : emitters)
     {
@@ -34,31 +38,33 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
         {
             responses.push_back(f);
         }
+        else
+        {
+            puts("Empty callback");
+        }
     }
     int used = 0;
-    while(used < len)
+    while(used*block < len)
     {
         ducker -= 20.0/fmt.samplerate;
         if(ducker < 1.0f)
             ducker = 1.0f;
         
         std::vector<float> transient(channels);
-        for(auto i = 0; i < spec.channels; i++)
+        for(auto c = 0; c < channels; c++)
         {
-            //transient[i] = 0.0f;
+            transient[c] = 0.0f;
             for(auto response : responses)
-                transient[i] += get_sample((char*)(response)+(used*block)+(i*sample), &fmt);
+                transient[c] += get_sample((Uint8*)response+(used*channels+c)*sample, &fmt);
             
-            if(fabsf(transient[i]) > ducker)
-                ducker = fabsf(transient[i]);
+            if(fabsf(transient[c]) > ducker)
+                ducker = fabsf(transient[c]);
         }
-        for(auto i = 0; i < spec.channels; i++)
+        for(auto c = 0; c < spec.channels; c++)
         {
-            set_sample((char*)(stream)+(used*block)+(i*sample), &fmt, transient[i]/ducker);
+            set_sample(stream+(used*channels+c)*sample, &fmt, transient[c]);
         }
-        used++;
+        used += 1;
     }
     responses.clear();
-    //fwrite(stream, 1, len, dumpfile);
-    //fflush(dumpfile);
 }

@@ -1,3 +1,4 @@
+
 [file_prefs]
 final_new_line=true
 ensure_convert_new_lines=false
@@ -10,38 +11,31 @@ indent_type=0
 indent_hard_tab_width=8
 detect_indent=true
 detect_indent_width=true
-indent_mode=2
+indent_mode=1
 
 [project]
 name=faucmix
-base_path=/home/wareya/dev/faucmix/
+base_path=C:\\Users\\wareya\\Desktop\\dev\\faucmix
 description=
+file_patterns=
 
 [long line marker]
 long_line_behaviour=1
 long_line_column=80
 
 [files]
-current_page=2
-FILE_NAME_0=2436;Sh;0;EUTF-8;0;1;0;%2Fhome%2Fwareya%2Fdev%2Ffaucmix%2Ftest.sh;0;4
-FILE_NAME_1=162;C++;0;EUTF-8;0;1;0;%2Fhome%2Fwareya%2Fdev%2Ffaucmix%2Fglobal.cpp;0;4
-FILE_NAME_2=190;C++;0;EUTF-8;0;1;0;%2Fhome%2Fwareya%2Fdev%2Ffaucmix%2Fglobal.hpp;0;4
-FILE_NAME_3=331;C++;0;EUTF-8;0;1;0;%2Fhome%2Fwareya%2Fdev%2Ffaucmix%2Fapi.cpp;0;4
-FILE_NAME_4=2635;None;0;EUTF-8;0;1;0;%2Fhome%2Fwareya%2Fdev%2Ffaucmix%2FAPI.txt;0;4
-FILE_NAME_5=1;C++;0;EUTF-8;0;1;0;%2Fhome%2Fwareya%2Fdev%2Ffaucmix%2Fapi.hpp;0;4
-FILE_NAME_6=1241;C++;0;EUTF-8;0;1;0;%2Fhome%2Fwareya%2Fdev%2Ffaucmix%2Ffaucetmix2.cpp;0;4
-FILE_NAME_7=685;C++;0;EUTF-8;0;1;0;%2Fhome%2Fwareya%2Fdev%2Ffaucmix%2Fwavstream.hpp;0;4
-FILE_NAME_8=21;C++;0;EUTF-8;0;1;0;%2Fhome%2Fwareya%2Fdev%2Ffaucmix%2Fwavstream.cpp;0;4
-FILE_NAME_9=61;C++;0;EUTF-8;0;1;0;%2Fhome%2Fwareya%2Fdev%2Ffaucmix%2Femitter.hpp;0;4
-FILE_NAME_10=46;C++;0;EUTF-8;0;1;0;%2Fhome%2Fwareya%2Fdev%2Ffaucmix%2Femitter.cpp;0;4
-FILE_NAME_11=1027;C++;0;EUTF-8;0;1;0;%2Fhome%2Fwareya%2Fdev%2Ffaucmix%2Fformat.hpp;0;4
-FILE_NAME_12=49;C++;0;EUTF-8;0;1;0;%2Fhome%2Fwareya%2Fdev%2Ffaucmix%2Fformat.cpp;0;4
-FILE_NAME_13=102;C++;0;EUTF-8;0;1;0;%2Fhome%2Fwareya%2Fdev%2Ffaucmix%2Fresample.hpp;0;4
-FILE_NAME_14=5962;C++;0;EUTF-8;0;1;0;%2Fhome%2Fwareya%2Fdev%2Ffaucmix%2Fresample.cpp;0;4
-FILE_NAME_15=71;C++;0;EUTF-8;0;1;0;%2Fhome%2Fwareya%2Fdev%2Ffaucmix%2Fstream.hpp;0;4
-FILE_NAME_16=23;C++;0;EUTF-8;0;1;0;%2Fhome%2Fwareya%2Fdev%2Ffaucmix%2Fstream.cpp;0;4
-FILE_NAME_17=364;C++;0;EUTF-8;0;1;0;%2Fhome%2Fwareya%2Fdev%2Ffaucmix%2Fchannels.hpp;0;4
-FILE_NAME_18=0;C++;0;EUTF-8;0;1;0;%2Fhome%2Fwareya%2Fdev%2Ffaucmix%2Fchannels.cpp;0;4
+current_page=9
+FILE_NAME_0=1211;C++;0;EUTF-8;0;1;1;C%3A%5CUsers%5Cwareya%5CDesktop%5Cdev%5Cfaucmix%5Cfaucetmix2.cpp;0;4
+FILE_NAME_1=70;C++;0;EUTF-8;0;1;1;C%3A%5CUsers%5Cwareya%5CDesktop%5Cdev%5Cfaucmix%5Cglobal.hpp;0;4
+FILE_NAME_2=0;C++;0;EUTF-8;0;1;1;C%3A%5CUsers%5Cwareya%5CDesktop%5Cdev%5Cfaucmix%5Cglobal.cpp;0;4
+FILE_NAME_3=0;C++;0;EUTF-8;0;1;1;C%3A%5CUsers%5Cwareya%5CDesktop%5Cdev%5Cfaucmix%5Cformat.hpp;0;4
+FILE_NAME_4=312;C++;0;EUTF-8;0;1;1;C%3A%5CUsers%5Cwareya%5CDesktop%5Cdev%5Cfaucmix%5Cwavstream.cpp;0;4
+FILE_NAME_5=121;C++;0;EUTF-8;0;1;1;C%3A%5CUsers%5Cwareya%5CDesktop%5Cdev%5Cfaucmix%5Cwavstream.hpp;0;4
+FILE_NAME_6=6678;C++;0;EUTF-8;0;1;1;C%3A%5CUsers%5Cwareya%5CDesktop%5Cdev%5Cfaucmix%5Cwavfile.cpp;0;4
+FILE_NAME_7=127;C++;0;EUTF-8;0;1;1;C%3A%5CUsers%5Cwareya%5CDesktop%5Cdev%5Cfaucmix%5Cwavfile.hpp;0;4
+FILE_NAME_8=0;C++;0;EUTF-8;0;1;1;C%3A%5CUsers%5Cwareya%5CDesktop%5Cdev%5Cfaucmix%5Capi.hpp;0;4
+FILE_NAME_9=2374;C++;0;EUTF-8;0;1;1;C%3A%5CUsers%5Cwareya%5CDesktop%5Cdev%5Cfaucmix%5Capi.cpp;0;4
+FILE_NAME_10=1190;None;0;EUTF-8;0;1;1;C%3A%5CUsers%5Cwareya%5CDesktop%5Cdev%5Cfaucmix%5Capichart.txt;0;4
 
 [VTE]
 last_dir=/home/wareya/dev/faucmix

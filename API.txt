@@ -76,7 +76,7 @@ The following functions can only be used once the library has been initialized.
  fauxmix_sample_load(filename)
 Loads a sample into memory for use by emitters.
 Supports: .wav[x], .flac[ ], .tta[ ], .opus[ ]
- fauxmix_sample_volume()
+ fauxmix_sample_volume(volume)
 Sets the base volume of a sample across all emitters it may be used by.
  fauxmix_sample_kill(sample)
 Immediately removes a sample from memory and clips off the output of any

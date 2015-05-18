@@ -41,7 +41,7 @@ void * emitter::generateframe(SDL_AudioSpec * spec, unsigned int len)
             DSPbuffer = malloc(goodlen);
             DSPlen = goodlen;
         }
-        int r = channel_cvt(DSPbuffer, badbuffer, len, spec, temp.channels);
+        int r = channel_cvt(DSPbuffer, badbuffer, len/spec->channels/(SDL_AUDIO_BITSIZE(spec->format)/8), spec, temp.channels);
         return DSPbuffer;
     }
     
