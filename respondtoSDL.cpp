@@ -29,8 +29,6 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
     auto sample = fmt.bytespersample;
     int channels = spec.channels;
     
-    std::cout << block << " " << int(sample) << " " << channels << "\n";
-    
     for(auto stream : emitters)
     {
         auto f = stream->generateframe(&spec, len);
@@ -38,16 +36,17 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
         {
             responses.push_back(f);
         }
-        else
-        {
-            puts("Empty callback");
-        }
     }
     int used = 0;
     while(used*block < len)
     {
-        ducker -= 20.0/fmt.samplerate;
-        if(ducker < 1.0f)
+        if(ducker > 1.0f)
+        {
+            ducker -= 1.0f/fmt.samplerate;
+            if(ducker < 1.0f)
+                ducker = 1.0f;
+        }
+        if(ducker < 1.0f) // failsafe
             ducker = 1.0f;
         
         std::vector<float> transient(channels);
@@ -58,11 +57,11 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
                 transient[c] += get_sample((Uint8*)response+(used*channels+c)*sample, &fmt);
             
             if(fabsf(transient[c]) > ducker)
-                ducker = fabsf(transient[c]);
+                ducker = fabsf(transient[c])*1.1f; // making the brickwall ducker overduck results in higher ducker quality???? WTF
         }
         for(auto c = 0; c < spec.channels; c++)
         {
-            set_sample(stream+(used*channels+c)*sample, &fmt, transient[c]);
+            set_sample(stream+(used*channels+c)*sample, &fmt, transient[c]/ducker);
         }
         used += 1;
     }
