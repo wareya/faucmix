@@ -22,8 +22,8 @@ Uint64 ipower(type b, type n)
 
 struct emitterinfo
 {
-    float pan = 0.0f;
-    float volume = 1.0f;
+    float vol_l = 1.0f;
+    float vol_r = 1.0f;
     std::atomic<bool> playing;
     bool loop = false;
     float mixdown = 1.0f;
@@ -38,6 +38,7 @@ struct wavformat
     Uint8 bytespersample;
     float datagain;
     double slowdatagain;
+    float volume;
 };
 
 wavformat audiospec_to_wavformat(SDL_AudioSpec * from);

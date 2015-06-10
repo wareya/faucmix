@@ -255,6 +255,7 @@ int t_wavfile_load(void * etc)
     self->format.datagain = datagain;
     self->format.slowdatagain = slowdatagain;
     self->format.blocksize = blocksize;
+    self->format.volume = 1.0f;
     
     
     /* normalize float */

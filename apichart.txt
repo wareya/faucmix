@@ -21,6 +21,7 @@ The following functions can only be used once the library has been initialized.
   0  - Still loading
   1  - Successfully loaded and playable
   -1 - Failed loading (IO or validity error)
+  -2 - Non-existent sample (bad ID)
  fauxmix_sample_volume(volume)
  fauxmix_sample_kill(sample)
 

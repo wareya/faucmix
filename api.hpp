@@ -33,16 +33,26 @@ DLLEXPORT bool fauxmix_is_ducking();
  * and it's up to you to kill them if they fail or unload
  */
 #include "wavfile.hpp"
-DLLEXPORT wavfile * fauxmix_sample_load(const char * filename);
-DLLEXPORT void fauxmix_sample_volume(void * sample, float volume);
-DLLEXPORT void fauxmix_sample_kill(void * sample);
-DLLEXPORT int fauxmix_sample_status(void * sample);
+DLLEXPORT Uint32 fauxmix_sample_load(const char * filename);
+DLLEXPORT int fauxmix_sample_status(Uint32 sample);
+DLLEXPORT int fauxmix_sample_volume(Uint32 sample, float volume);
+DLLEXPORT void fauxmix_sample_kill(Uint32 sample);
 
-DLLEXPORT emitter * fauxmix_emitter_create(void * sample);
-DLLEXPORT wavfile * fauxmix_emitter_sample(emitter * mine);
-DLLEXPORT int fauxmix_emitter_status(emitter * mine);
-DLLEXPORT void fauxmix_emitter_fire(emitter * mine);
-DLLEXPORT void fauxmix_emitter_cease(emitter * mine);
-DLLEXPORT void fauxmix_emitter_kill(emitter * mine);
+#include "emitter.hpp"
+DLLEXPORT Uint32 fauxmix_emitter_create(Uint32 sample);
+DLLEXPORT int fauxmix_emitter_status(Uint32 mine);
+DLLEXPORT int fauxmix_emitter_volumes(Uint32 mine, float left, float right);
+DLLEXPORT int fauxmix_emitter_fire(Uint32 mine);
+DLLEXPORT int fauxmix_emitter_cease(Uint32 mine);
+DLLEXPORT void fauxmix_emitter_kill(Uint32 mine);
 
+
+/*
+fauxmix_emitter_create(sample)
+fauxmix_emitter_status(emitter)
+fauxmix_emitter_volumes(emitter, left, right)
+fauxmix_emitter_fire(emitter)
+fauxmix_emitter_cease(emitter)
+fauxmix_emitter_kill(emitter)
+*/
 #endif

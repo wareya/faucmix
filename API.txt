@@ -81,7 +81,7 @@ Sets the base volume of a sample across all emitters it may be used by.
  fauxmix_sample_kill(sample)
 Immediately removes a sample from memory and clips off the output of any
 emitters that are using it.
- fauxmix_sample_isready(sample)
+ fauxmix_sample_status(sample)
 Returns whether a sample has finished loading and is ready to play.
 {
  fauxmix_sample_use_cuepoints(sample)

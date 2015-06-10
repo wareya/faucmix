@@ -15,6 +15,7 @@ wavformat audiospec_to_wavformat(SDL_AudioSpec * from)
     , (Uint8)bytes
     , (float)(isfloat?1.0f:isbig?0.0f:ipower(0x100,bytes)/2.0f)
     , (double)(isbig?ipower(0x100,bytes)/2.0L:0.0L)
+    , 1.0f
     };
 }
 
@@ -52,7 +53,7 @@ float get_sample(void * addr, wavformat * fmt)
             trans = trans2 / fmt->slowdatagain;
         }
     }
-    return trans;
+    return trans * fmt->volume;
 }
 
 void set_sample(void * addr, wavformat * fmt, float val)

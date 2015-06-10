@@ -9,8 +9,6 @@
 #include <vector>
 #include <set>
 
-extern std::set<emitter *> emitters;
-
 void respondtoSDL(void * udata, Uint8 * stream, int len);
 
 #endif

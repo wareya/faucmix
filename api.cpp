@@ -93,56 +93,175 @@ DLLEXPORT bool fauxmix_is_ducking()
  * and it's up to you to kill them if they fail or unload
  */
 #include "wavfile.hpp"
-DLLEXPORT wavfile * fauxmix_sample_load(const char * filename)
+#include "global.hpp"
+DLLEXPORT Uint32 fauxmix_sample_load(const char * filename)
 {
-    return wavfile_load(filename);
+    auto i = sampleids.New();
+    
+    commandlock.lock();
+        cmdbuffer.push_back([i, filename]()
+        {
+            auto n = wavfile_load(filename);
+            samples.emplace(i, n);
+        });
+    commandlock.unlock();
+    
+    return i;
 }
-DLLEXPORT void fauxmix_sample_volume(void * sample, float volume)
+DLLEXPORT int fauxmix_sample_volume(Uint32 sample, float volume)
 {
-    auto mine = (wavfile*)sample;
-    mine->volume = volume;
+    commandlock.lock();
+        if(samples.count(sample) != 0)
+        {
+            cmdbuffer.push_back([sample, volume]()
+            {
+                auto mine = samples[sample];
+                mine->volume = volume;
+            });
+            return 0;
+        }
+        else
+            return -1;
+    commandlock.unlock();
 }
-DLLEXPORT void fauxmix_sample_kill(void * sample)
+DLLEXPORT void fauxmix_sample_kill(Uint32 sample)
 {
-    // ????? TODO; HAVE TO HANDLE WEAKNESS IN EMITTER
+    sampleids.Free(sample);
+    commandlock.lock();
+        cmdbuffer.push_back([sample]()
+        {
+            if(samples.count(sample) != 0)
+            {
+                delete samples[sample];
+                samples.erase(sample);
+            }
+            if(samplestoemitters.count(sample) != 0)
+            {
+                for(auto e : samplestoemitters[sample])
+                {
+                    if(emitters.count(e) != 0)
+                    {
+                        delete emitters[e];
+                        emitters.erase(e);
+                        emitterids.Free(e);
+                    }
+                }
+                samplestoemitters.erase(sample);
+            }
+        });
+    commandlock.unlock();
 }
-DLLEXPORT int fauxmix_sample_status(void * sample)
+DLLEXPORT int fauxmix_sample_status(Uint32 sample)
 {
-    auto mine = (wavfile*)sample;
-    return mine->status;
+    if(sampleshadow.count(sample) != 0)
+    {
+        return sampleshadow[sample].status;
+    }
+    else
+        return -2;
 }
 
 
 
-DLLEXPORT emitter * fauxmix_emitter_create(void * sample)
+DLLEXPORT Uint32 fauxmix_emitter_create(Uint32 sample)
 {
-    auto mine = new emitter((wavfile*)sample);
-    emitters.insert(mine);
-    return mine;
+    auto i = emitterids.New();
+    commandlock.lock();
+        cmdbuffer.push_back([i, sample]()
+        {
+            if(samples.count(sample) != 0)
+            {
+                auto s = samples[sample];
+                auto mine = new emitter(s);
+                emitters.emplace(i, mine);
+                samplestoemitters[sample].push_back(i);
+            }
+        });
+    commandlock.unlock();
+    return i;
 }
  
-DLLEXPORT wavfile * fauxmix_emitter_sample(emitter * mine)
+DLLEXPORT int fauxmix_emitter_status(Uint32 id)
 {
-    return ((wavstream *)(mine->stream))->sample; // TODO: check for wavstream before casting
-}
- 
-DLLEXPORT int fauxmix_emitter_status(emitter * mine)
-{
-    return fauxmix_sample_status(((wavstream *)(mine->stream))->sample); // TODO: check for wavstream before casting
+    if(emittershadow.count(id) != 0)
+    {
+        return emittershadow[id].status;
+    }
+    else
+        return -2;
 }
 
-//fauxmix_emitter_volumes(emitter, left, right)
+DLLEXPORT int fauxmix_emitter_volumes(Uint32 id, float left, float right)
+{
+    if(emitterids.Exists(id))
+    {
+        commandlock.lock();
+            cmdbuffer.push_back([id, left, right]()
+            {
+                if(emitters.count(id) != 0)
+                {
+                    auto mine = emitters[id];
+                    mine->info.vol_l = left;
+                    mine->info.vol_r = right;
+                }
+            });
+        commandlock.unlock();
+        return 0;
+    }
+    else
+        return -1;
+}
 
-DLLEXPORT void fauxmix_emitter_fire(emitter * mine)
+DLLEXPORT int fauxmix_emitter_fire(Uint32 id)
 {
-    mine->fire();
+    if(emitterids.Exists(id))
+    {
+        commandlock.lock();
+            cmdbuffer.push_back([id]()
+            {
+                if(emitters.count(id) != 0)
+                {
+                    auto mine = emitters[id];
+                    mine->fire();
+                }
+            });
+        commandlock.unlock();
+        return 0;
+    }
+    else
+        return -1;
 }
-DLLEXPORT void fauxmix_emitter_cease(emitter * mine)
+DLLEXPORT int fauxmix_emitter_cease(Uint32 id)
 {
-    mine->cease();
+    if(emitterids.Exists(id))
+    {
+        commandlock.lock();
+            cmdbuffer.push_back([id]()
+            {
+                if(emitters.count(id) != 0)
+                {
+                    auto mine = emitters[id];
+                    mine->cease();
+                }
+            });
+        commandlock.unlock();
+        return 0;
+    }
+    else
+        return -1;
 }
-DLLEXPORT void fauxmix_emitter_kill(emitter * mine)
+DLLEXPORT void fauxmix_emitter_kill(Uint32 id)
 {
-    emitters.erase(mine);
-    delete mine;
+    emitterids.Free(id);
+    commandlock.lock();
+        cmdbuffer.push_back([id]()
+        {
+            if(emitters.count(id) != 0)
+            {
+                delete emitters[id];
+                emitters.erase(id);
+                emitterids.Free(id);
+            }
+        });
+    commandlock.unlock();
 }
