@@ -8,6 +8,8 @@
 #include <SDL2/SDL_audio.h>
 
 #include <iostream>
+#include <math.h>
+#include <algorithm>
 
 #include "global.hpp"
 bool isfloat;
@@ -193,16 +195,21 @@ DLLEXPORT int fauxmix_emitter_status(Uint32 id)
 
 DLLEXPORT int fauxmix_emitter_volumes(Uint32 id, float left, float right)
 {
+    float fadewindow = float(got.freq)*0.01f;
     if(emitterids.Exists(id))
     {
         commandlock.lock();
-            cmdbuffer.push_back([id, left, right]()
+            cmdbuffer.push_back([id, left, right, fadewindow]()
             {
                 if(emitters.count(id) != 0)
                 {
-                    auto mine = emitters[id];
-                    mine->info.vol_l = left;
-                    mine->info.vol_r = right;
+                    mixinfo* mix = &(emitters[id]->mix);
+                    mix->target_l = left;
+                    mix->target_r = right;
+                    mix->add_l = (mix->target_l - mix->vol_l)/fadewindow;
+                    mix->add_r = (mix->target_r - mix->vol_r)/fadewindow;
+                    mix->remaining = ceil(fadewindow);
+                    //std::cout << mix->target_l << " " << mix->vol_l << " " << (mix->target_l - mix->vol_l) << "\n";
                 }
             });
         commandlock.unlock();

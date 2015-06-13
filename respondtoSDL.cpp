@@ -18,7 +18,7 @@
 #include <stdlib.h>
 
 std::vector<void *> responses;
-std::vector<emitterinfo *> infos;
+std::vector<mixinfo *> infos;
 
 void respondtoSDL(void * udata, Uint8 * stream, int len)
 {
@@ -52,7 +52,7 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
         if(f != nullptr)
         {
             responses.push_back(f);
-            infos.push_back(&stream->info);
+            infos.push_back(&stream->mix);
         }
     }
     /* Mix responses into output stream */
@@ -80,6 +80,18 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
                     transient[c] += get_sample((Uint8*)response+(used*channels+c)*sample, &fmt) * ((c == 0)?info->vol_l:info->vol_r);
                 else
                     transient[c] += get_sample((Uint8*)response+(used*channels+c)*sample, &fmt) * (info->vol_l + info->vol_r)/2;
+                
+                if(c+1 == channels and info->remaining > 0)
+                {
+                    info->vol_l += info->add_l;
+                    info->vol_r += info->add_r;
+                    info->remaining -= 1;
+                    if(info->remaining == 0)
+                    {
+                        info->vol_l = info->target_l;
+                        info->vol_r = info->target_r;
+                    }
+                }
             }
             if(fabsf(transient[c]) > ducker)
                 ducker = fabsf(transient[c])*1.1f; // making the brickwall ducker overduck results in higher ducker quality???? WTF
@@ -101,8 +113,8 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
             auto id = s.first;
             auto mine = s.second;
             emittershadow[id].status = mine->info.playing;
-            emittershadow[id].vol1 = mine->info.vol_l;
-            emittershadow[id].vol2 = mine->info.vol_r;
+            emittershadow[id].vol1 = mine->mix.vol_l;
+            emittershadow[id].vol2 = mine->mix.vol_r;
         }
         for(auto s : samples)
         {

@@ -2,6 +2,8 @@
 
 #include <SDL2/SDL.h>
 
+#include <math.h>
+
 int main(int argc, char * argv[])
 {
     if(argc == 1)
@@ -34,11 +36,9 @@ int main(int argc, char * argv[])
         fauxmix_emitter_fire(emitter3);
     }
     
-    SDL_Delay(1000);
+    SDL_Delay(50);
     while(fauxmix_emitter_status(emitter1))
-    {
-        SDL_Delay(1000);
-    }
+        SDL_Delay(100);
     
     return 0;
 }

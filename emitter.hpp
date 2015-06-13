@@ -7,10 +7,26 @@
 
 #include <SDL2/SDL_audio.h>
 
+struct mixinfo
+{
+    float vol_l = 1.0f;
+    float vol_r = 1.0f;
+    
+    float add_l = 0.0f;
+    float add_r = 0.0f;
+    
+    float target_l = 1.0f;
+    float target_r = 1.0f;
+    
+    int remaining = 0;
+};
+
 struct emitter
 {
     pcmstream * stream;
     emitterinfo info;
+    
+    mixinfo mix;
     
     emitter(wavfile * sample);
     ~emitter();

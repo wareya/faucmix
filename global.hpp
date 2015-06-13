@@ -40,6 +40,16 @@
 #include <mutex>
 #include <map>
 #include <SDL2/SDL_stdinc.h>
+#include <SDL2/SDL_audio.h>
+
+/* cfg */
+
+extern bool initiated;
+extern float volume;
+extern float ducker;
+
+extern SDL_AudioSpec want;
+extern SDL_AudioSpec got;
 
 /* cmdbuffer */
 
@@ -66,12 +76,6 @@ struct sampledat
 extern std::mutex shadowlock;
 extern std::map<Uint32, emitterdat> emittershadow;
 extern std::map<Uint32, sampledat> sampleshadow;
-
-/* cfg */
-
-extern bool initiated;
-extern float volume;
-extern float ducker;
 
 /* lists */ 
 #include "genericallocator.hpp"
