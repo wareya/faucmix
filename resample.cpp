@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <math.h>
+#include <string.h>
 
 // Takes N channels, gives N channels
 int linear_resample_into_buffer
@@ -40,32 +41,24 @@ int linear_resample_into_buffer
     auto srcb = srcfmt->bytespersample;
     auto tgtb = tgtfmt->bytespersample;
     
+    memset(tgt, 0, tgtlen);
+    
     if(difference == 0)
     {
-        Sint32 overrun = tgts+position - srcs;
-        overrun = overrun>0? overrun : 0;
-        if(overrun)
-            puts("overun");
-        if( srcfmt->isfloatingpoint == tgtfmt->isfloatingpoint
-        and srcfmt->bytespersample == tgtfmt->bytespersample)
+        position = position % srcs;
+        for(unsigned s = 0; s < tgts; s++)
         {
-            memcpy(tgt, (char*)(src)+position*srcfmt->blocksize, overrun?tgtlen-overrun*tgtfmt->blocksize:tgtlen);
-            //memcpy(tgt, (char*)(src)+position*srcfmt->blocksize, tgtlen);
-            //memset((char*)tgt+position, (srcfmt->bytespersample==1)?128:0, overrun?overrun*tgtfmt->blocksize:0);
-            return NORESAMPLING;
-        }
-        else // have to expand or crush 
-        {
-            for(unsigned s = 0; s < tgts; s++)
+            for(auto c = 0; c < srcfmt->channels; c++)
             {
-                for(auto c = 0; c < srcfmt->channels; c++)
-                {
-                    auto whichfrom = (position+s)*srcfmt->channels+c;
-                    auto whichto = s*tgtfmt->channels+c;
-                    size_t from = (size_t)src + whichfrom*srcb;
-                    size_t to = (size_t)tgt + whichto*tgtb;
-                    set_sample((Uint8*)to, tgtfmt, get_sample((Uint8*)from, srcfmt));
-                }
+                Sint32 overrun = (position+s > srcs);
+                if(overrun and !looparound)
+                    return NORESAMPLING;
+                int srcpos = (position+s) % srcs;
+                auto whichfrom = srcpos*srcfmt->channels+c;
+                auto whichto = s*tgtfmt->channels+c;
+                size_t from = (size_t)src + whichfrom*srcb;
+                size_t to = (size_t)tgt + whichto*tgtb;
+                set_sample((Uint8*)to, tgtfmt, get_sample((Uint8*)from, srcfmt));
             }
         }
     }
@@ -84,13 +77,27 @@ int linear_resample_into_buffer
             float fraction = (float)moire / tgtrate;
             
             auto lower = which*srcrate/tgtrate; // integer division performs truncation
+            if(lower > srcs)
+            {
+                if(looparound)
+                    lower = lower % srcs;
+                else
+                    break;
+            }
             auto higher = lower;
             if(moire > 0)
                 higher = lower + 1;
+            if(higher > srcs)
+            {
+                if(looparound)
+                    higher = higher % srcs;
+                else
+                    break;
+            }
             for(auto c = 0; c < srcfmt->channels; c++)
             {
-                auto sample1 = get_sample((Uint8*)src+(lower*srcfmt->channels+c)*srcb, srcfmt);
-                auto sample2 = get_sample((Uint8*)src+(higher*srcfmt->channels+c)*srcb, srcfmt);
+                auto sample1 = get_sample((Uint8*)src+((lower*srcfmt->channels+c)*srcb), srcfmt);
+                auto sample2 = get_sample((Uint8*)src+((higher*srcfmt->channels+c)*srcb), srcfmt);
                 
                 float out = sample1*(1.0-fraction) + sample2*fraction;
                 
@@ -129,9 +136,16 @@ int linear_resample_into_buffer
                 float calibrate = (float)srcrate/tgtrate;
                 for(auto i = 0; i <= window_length; i++) // convolution
                 {
-                    if((window_bottom+i) > srcs or (window_top+i) < 0)
+                    auto pickup = (window_bottom+i);
+                    if((window_top+i) < 0)
                         continue;
-                    
+                    while(pickup > srcs)
+                    {
+                        if(!looparound)
+                            continue;
+                        else
+                            pickup -= srcs;
+                    }
                     Sint32 hiorder_distance = (Sint64)(i*tgtrate+hiorder_bottom) - hiorder_position;
                     if(hiorder_distance < 0)
                         hiorder_distance = -hiorder_distance;
@@ -139,19 +153,13 @@ int linear_resample_into_buffer
                     if(hiorder_distance > hiorder_winheight) // failsafe
                     {
                         puts("fuck");
-                        printf("%d %d %d\n", window_bottom, window_top, i);
                         float ratefactor = (float)srcrate/tgtrate;
-                        printf("%f\n", which*ratefactor - ratefactor);
-                        printf("%ld %d %ld\n", which, tgtrate, (which*srcrate-srcrate)%tgtrate);
-                        printf("%f\n", ceil(which*ratefactor - ratefactor));
-                        printf("%f\n", floor(which*ratefactor + ratefactor));
-                        printf("%ld %ld %d %d\n", (i*tgtrate+hiorder_bottom), hiorder_position, i, hiorder_distance);
                         continue;
                     }
                     Uint32 hiorder_closeness = hiorder_winheight - hiorder_distance;
                     
                     double closeness = hiorder_closeness/(float)hiorder_winheight; // NOTE: Should "closeness" be done in hiorder space?
-                    transient += get_sample((Uint8*)src + ((window_bottom+i)*srcfmt->channels+c)*srcb, srcfmt) * closeness;
+                    transient += get_sample((Uint8*)src + (pickup*srcfmt->channels+c)*srcb, srcfmt) * closeness;
                 }
                 transient /= calibrate;
                 set_sample((Uint8*)tgt+(s*tgtfmt->channels+c)*tgtb, tgtfmt, transient);

@@ -16,6 +16,7 @@ source=(
  "api.cpp"
  "respondtoSDL.cpp"
  "global.cpp"
+ "lcm.cpp"
  )
 
 if [ "$OSTYPE" == "msys" ]; then

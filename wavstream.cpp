@@ -1,6 +1,7 @@
 #include "wavstream.hpp"
 #include "resample.hpp"
 #include "format.hpp"
+#include "lcm.hpp"
 
 wavstream::wavstream(wavfile * given) // TODO: SEPARATE INSTANTIATION OF WAVSTREAM FROM WAVFILE
 {
@@ -49,21 +50,25 @@ void * wavstream::generateframe(SDL_AudioSpec * spec, unsigned int len, emitteri
         bufferlen = outputsize;
     }
     
-    // TODO: CHECK FOR LOOP
     auto fuck = audiospec_to_wavformat(spec);
     linear_resample_into_buffer
     ( position
     , &sample->format
     , sample->data, sample->bytes
     , buffer, bufferlen
-    , &fuck, false);
+    , &fuck, info->loop);
     
     position += len;
     
-    if(position*(Uint64)sample->format.samplerate/spec->freq > sample->samples)
+    if(info->loop)
+    {
+        position = position % (sample->samples*spec->freq);
+    }
+    else if(position*(Uint64)sample->format.samplerate/spec->freq > sample->samples)
     {
         info->playing = false;
     }
+    
     return buffer;
 }
 void wavstream::fire(emitterinfo * info)
