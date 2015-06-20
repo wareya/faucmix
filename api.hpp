@@ -43,6 +43,7 @@ DLLEXPORT Uint32 fauxmix_emitter_create(Uint32 sample);
 DLLEXPORT int fauxmix_emitter_status(Uint32 mine);
 DLLEXPORT int fauxmix_emitter_volumes(Uint32 mine, float left, float right);
 DLLEXPORT int fauxmix_emitter_loop(Uint32 mine, bool whether);
+DLLEXPORT int fauxmix_emitter_pitch(Uint32 mine, float ratefactor);
 DLLEXPORT int fauxmix_emitter_fire(Uint32 mine);
 DLLEXPORT int fauxmix_emitter_cease(Uint32 mine);
 DLLEXPORT void fauxmix_emitter_kill(Uint32 mine);

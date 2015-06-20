@@ -94,7 +94,10 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
                 }
             }
             if(fabsf(transient[c]) > ducker)
+            {
                 ducker = fabsf(transient[c])*1.1f; // making the brickwall ducker overduck results in higher ducker quality???? WTF
+                puts("Ducking!");
+            }
         }
         for(auto c = 0; c < spec.channels; c++)
         {

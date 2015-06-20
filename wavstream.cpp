@@ -51,9 +51,11 @@ void * wavstream::generateframe(SDL_AudioSpec * spec, unsigned int len, emitteri
     }
     
     auto fuck = audiospec_to_wavformat(spec);
+    auto fuck2 = sample->format;
+    fuck2.samplerate *= info->ratefactor;
     linear_resample_into_buffer
     ( position
-    , &sample->format
+    , &fuck2
     , sample->data, sample->bytes
     , buffer, bufferlen
     , &fuck, info->loop);

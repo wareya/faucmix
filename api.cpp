@@ -238,6 +238,25 @@ DLLEXPORT int fauxmix_emitter_loop(Uint32 id, bool whether)
         return -1;
 }
 
+DLLEXPORT int fauxmix_emitter_pitch(Uint32 id, float ratefactor)
+{
+    if(emitterids.Exists(id))
+    {
+        commandlock.lock();
+            cmdbuffer.push_back([id, ratefactor]()
+            {
+                if(emitters.count(id) != 0)
+                {
+                    emitters[id]->info.ratefactor = ratefactor;
+                }
+            });
+        commandlock.unlock();
+        return 0;
+    }
+    else
+        return -1;
+}
+
 DLLEXPORT int fauxmix_emitter_fire(Uint32 id)
 {
     if(emitterids.Exists(id))

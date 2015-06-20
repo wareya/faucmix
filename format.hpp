@@ -24,6 +24,7 @@ struct emitterinfo
 {
     std::atomic<bool> playing;
     bool loop = false;
+    float ratefactor = 1.0f;
 };
 
 struct wavformat
