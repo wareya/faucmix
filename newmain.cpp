@@ -17,18 +17,19 @@ int main(int argc, char * argv[])
     fauxmix_init(44100, false, 1024);
     
     Uint32 emitter1;
+    Uint32 sample1;
     
     if(strcmp("ducker", argv[1]) != 0)
     {
-        auto sample1 = fauxmix_sample_load(argv[1]);
+        sample1 = fauxmix_sample_load(argv[1]);
         emitter1 = fauxmix_emitter_create(sample1);
-        fauxmix_emitter_loop(emitter1, true);
+        //fauxmix_emitter_loop(emitter1, true);
         fauxmix_emitter_pitch(emitter1, 2.0f);
         fauxmix_emitter_fire(emitter1);
     }
     else
     {
-        auto sample1 = fauxmix_sample_load("jibberish.wav");
+        sample1 = fauxmix_sample_load("jibberish.wav");
         auto sample2 = fauxmix_sample_load("8k.wav");
         auto sample3 = fauxmix_sample_load("mote.wav");
         emitter1 = fauxmix_emitter_create(sample1);
@@ -41,7 +42,11 @@ int main(int argc, char * argv[])
     
     SDL_Delay(50);
     while(fauxmix_emitter_status(emitter1))
+    {
         SDL_Delay(100);
+        if(fauxmix_sample_status(sample1) == -1)
+            break;
+    }
     
     return 0;
 }

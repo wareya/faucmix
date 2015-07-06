@@ -122,13 +122,22 @@ DLLEXPORT Uint32 fauxmix_sample_load(const char * filename)
             auto b = strlen(filename);
             int a;
             if(b > 10000) // no
-                goto wav; // this has to be controlled for overflow of b - 4
-            a = b - 4;
+            {
+                puts("Long filename -- cancelling opus detection!");
+                goto wav; // this has to be controlled for overflow of b - 5
+            }
+            a = b - 5;
             if(a < 0)
+            {
+                puts("Short filename -- not opus!");
                 goto wav; // this has to be controlled for possible strcmp exploits
-            if(strncmp(".opus", filename+a, 4) != 0)
+            }
+            if(strncmp(".opus", filename+a, 5) != 0)
+            {
+                puts("No overlap -- not opus!");
+                std::cout << filename+a << "\n";
                 goto wav;
-            
+            }
             opus:
             {
                 auto n = opusfile_load(filename);

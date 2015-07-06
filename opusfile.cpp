@@ -23,6 +23,7 @@ int t_opusfile_load(void * etc)
     if(myfile == NULL)
     {
         self->status = -1;
+        puts("failed loading opus sample");
         return 0;
     }
     auto samples = op_pcm_total(myfile, -1);
@@ -36,6 +37,7 @@ int t_opusfile_load(void * etc)
     {
         self->status = -1;
         free(buffer);
+        puts("failed loading opus sample");
         return 0;
     }
     
@@ -71,4 +73,5 @@ int t_opusfile_load(void * etc)
     self->fmt = fmt;
     self->data = (Uint8*)buffer;
     self->status = 1;
+    puts("loaded opus sample");
 }
