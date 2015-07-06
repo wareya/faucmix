@@ -94,5 +94,6 @@ extern std::map<Uint32, wavfile *> samples;
 
 // used to kill wav-emitters when a wav-sample is killed
 extern std::map<Uint32, std::vector<Uint32>> samplestoemitters;
+extern std::map<Uint32, float> mixchannels;
 
 #endif

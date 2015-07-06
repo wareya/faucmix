@@ -8,7 +8,7 @@ wavfile * wavfile_load (const char * filename)
     auto sample = new wavfile;
     sample->status = 0;
     sample->stored = std::string(filename);
-    SDL_CreateThread(&t_wavfile_load, "faucetmix2.cpp:t_wavfile_load", sample);
+    SDL_CreateThread(&t_wavfile_load, "wavfile_load:t_wavfile_load", sample);
     return sample;
 }
 

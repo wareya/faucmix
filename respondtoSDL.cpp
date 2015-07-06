@@ -76,10 +76,16 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
             {
                 auto response = responses[i];
                 auto& info = infos[i];
+                
+                float realvol;
                 if (channels == 2)
-                    transient[c] += get_sample((Uint8*)response+(used*channels+c)*sample, &fmt) * ((c == 0)?info->vol_l:info->vol_r);
+                    realvol = ((c == 0)?info->vol_l:info->vol_r);
                 else
-                    transient[c] += get_sample((Uint8*)response+(used*channels+c)*sample, &fmt) * (info->vol_l + info->vol_r)/2;
+                    realvol = (info->vol_l + info->vol_r)/2;
+                if(mixchannels.count(info->channel))
+                    realvol *= mixchannels[info->channel];
+                
+                transient[c] += get_sample((Uint8*)response+(used*channels+c)*sample, &fmt) * realvol;
                 
                 if(c+1 == channels and info->remaining > 0)
                 {

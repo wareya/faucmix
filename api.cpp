@@ -85,6 +85,19 @@ DLLEXPORT bool fauxmix_is_ducking()
     return ducker > 1.0f;
 }
 
+DLLEXPORT int fauxmix_channel(Uint32 id, float volume)
+{
+    commandlock.lock();
+        cmdbuffer.push_back([id, volume]()
+        {
+            if(mixchannels.count(id) == 0 and id >= 0)
+            {
+                mixchannels[id] = (volume > 1.0f ? 1.0f : volume);
+            }
+        });
+    commandlock.unlock();
+    return 0;
+}
 /*
  * Samples have to be loaded on a thread or else client game logic would cause synchronous disk IO
  * However, this means that the "load sample" command can't give a definitive response on the validity of a sample file
@@ -229,6 +242,25 @@ DLLEXPORT int fauxmix_emitter_loop(Uint32 id, bool whether)
                 if(emitters.count(id) != 0)
                 {
                     emitters[id]->info.loop = whether;
+                }
+            });
+        commandlock.unlock();
+        return 0;
+    }
+    else
+        return -1;
+}
+
+DLLEXPORT int fauxmix_emitter_channel(Uint32 id, int channel)
+{
+    if(emitterids.Exists(id))
+    {
+        commandlock.lock();
+            cmdbuffer.push_back([id, channel]()
+            {
+                if(emitters.count(id) != 0)
+                {
+                    emitters[id]->mix.channel = channel;
                 }
             });
         commandlock.unlock();

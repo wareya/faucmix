@@ -19,6 +19,8 @@ struct mixinfo
     float target_r = 1.0f;
     
     int remaining = 0;
+    
+    int channel = -1;
 };
 
 struct emitter
