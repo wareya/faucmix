@@ -7,6 +7,7 @@ mkdir -p obj
 source=(
  "newmain.cpp"
  "wavfile.cpp"
+ "opusfile.cpp"
  "wavstream.cpp"
  "emitter.cpp"
  "format.cpp"
@@ -84,6 +85,8 @@ else
     fi
 fi
 
+cflags+=" -I include"
+
 cmd="g++ -std=c++11 -g -ggdb -Wall -pedantic -Wno-unused -Wno-sign-compare -Wno-return-type -Wfatal-errors $cflags"
 
 objects=""
@@ -102,7 +105,7 @@ do
     done
     objects="$objects $obj"
 done
-echo "g++ -o $executable $objects $linker"
+echo "g++ -o $executable $objects opusfile.o $linker"
 g++ -o $executable $objects $linker
 
 echo "done"

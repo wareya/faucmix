@@ -1,14 +1,16 @@
 #include "opusfile.hpp"
 
+#include <opusfile.h>
+
 #include <stdio.h>
 
-wavfile * wavfile_load (const char * filename)
+wavfile * opusfile_load (const char * filename)
 {
     puts("loading opus sample");
     auto sample = new wavfile;
     sample->status = 0;
     sample->stored = std::string(filename);
-    SDL_CreateThread(&opusfile_load, "faucetmix2:t_opusfile_load", sample);
+    SDL_CreateThread(&t_opusfile_load, "faucetmix2:t_opusfile_load", sample);
     return sample;
 }
 
@@ -17,17 +19,25 @@ int t_opusfile_load(void * etc)
     auto self = (wavfile *)etc;
     const char * fname = self->stored.data();
     
-    auto myfile = op_open_file(fname, void);
+    auto myfile = op_open_file(fname, NULL);
     if(myfile == NULL)
-        return bad;
-        
-    auto samples = op_pcm_total(myfile);
+    {
+        self->status = -1;
+        return 0;
+    }
+    auto samples = op_pcm_total(myfile, -1);
     auto values = samples * 2;
     auto bytes = samples * 2 * 2;
     
     auto buffer = malloc(bytes);
     
-    op_read_stereo(myfile, buffer, values);
+    auto r = op_read_stereo(myfile, (opus_int16*)buffer, values);
+    if(r < 0)
+    {
+        self->status = -1;
+        free(buffer);
+        return 0;
+    }
     
     self->format.isfloatingpoint = false;
     self->format.channels = 2;
@@ -38,7 +48,7 @@ int t_opusfile_load(void * etc)
     self->format.blocksize = 4;
     self->format.volume = 1.0f;
     
-    char * fmt = (char*)malloc(16);
+    unsigned char * fmt = (unsigned char*)malloc(16);
     fmt[ 0] = 0x01;;
     fmt[ 1] = 0x00;
     fmt[ 2] = 0x02;
@@ -59,6 +69,6 @@ int t_opusfile_load(void * etc)
     self->samples = samples;
     self->bytes = bytes;
     self->fmt = fmt;
-    self->data = buffer;
+    self->data = (Uint8*)buffer;
     self->status = 1;
 }

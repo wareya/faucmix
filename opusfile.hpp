@@ -1,5 +1,5 @@
-#ifndef INCLUDED_WAVFLIE
-#define INCLUDED_WAVFLIE
+#ifndef INCLUDED_OPUSFLIE
+#define INCLUDED_OPUSFLIE
 
 #include "format.hpp"
 #include "wavfile.hpp"

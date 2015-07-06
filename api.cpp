@@ -108,7 +108,10 @@ DLLEXPORT int fauxmix_channel(Uint32 id, float volume)
  * and it's up to you to kill them if they fail or unload
  */
 #include "wavfile.hpp"
+#include "opusfile.hpp"
 #include "global.hpp"
+
+#include <string.h>
 DLLEXPORT Uint32 fauxmix_sample_load(const char * filename)
 {
     auto i = sampleids.New();
@@ -116,8 +119,28 @@ DLLEXPORT Uint32 fauxmix_sample_load(const char * filename)
     commandlock.lock();
         cmdbuffer.push_back([i, filename]()
         {
-            auto n = wavfile_load(filename);
-            samples.emplace(i, n);
+            auto b = strlen(filename);
+            int a;
+            if(b > 10000) // no
+                goto wav; // this has to be controlled for overflow of b - 4
+            a = b - 4;
+            if(a < 0)
+                goto wav; // this has to be controlled for possible strcmp exploits
+            if(strncmp(".opus", filename+a, 4) != 0)
+                goto wav;
+            
+            opus:
+            {
+                auto n = opusfile_load(filename);
+                samples.emplace(i, n);
+                return;
+            }
+            wav:
+            {
+                auto n = wavfile_load(filename);
+                samples.emplace(i, n);
+                return;
+            }
         });
     commandlock.unlock();
     
