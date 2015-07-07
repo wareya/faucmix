@@ -1,6 +1,8 @@
 #include <map>
 #include <utility>
 
+#include <stdio.h>
+
 typedef std::pair<int, int> pair;
 
 int shittygcd(int a, int b)
@@ -11,6 +13,7 @@ int shittygcd(int a, int b)
         swap = a;
         a = b%a;
         b = swap;
+        puts("lcm while");
     }
     return b;
 }
@@ -31,4 +34,5 @@ int lcm(int a, int b)
         cache[pair(a, b)] = r;
         return r;
     }
+    puts("LCMing");
 }

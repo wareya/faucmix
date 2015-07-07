@@ -36,6 +36,7 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
         {
             copybuffer.push_back(cmdbuffer[0]);
             cmdbuffer.pop_front();
+            puts("commandsing");
         }
     commandlock.unlock();
     
@@ -57,8 +58,12 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
     }
     /* Mix responses into output stream */
     int used = 0;
+    int maxloops = 100000;
     while(used*block < len)
     {
+        maxloops -= 1;
+        if(maxloops < 0)
+            break;
         if(ducker > 1.0f)
         {
             ducker -= 1.0f/fmt.samplerate;

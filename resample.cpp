@@ -3,6 +3,7 @@
 #include <iostream>
 #include <math.h>
 #include <string.h>
+#define puts(x) {}
 
 // Takes N channels, gives N channels
 int linear_resample_into_buffer
@@ -16,6 +17,7 @@ int linear_resample_into_buffer
 , bool looparound
 )
 {
+    puts("start resample");
     enum returncodes
     {
         NORESAMPLING,
@@ -45,14 +47,20 @@ int linear_resample_into_buffer
     
     if(difference == 0)
     {
+        puts("even");
         position = position % srcs;
         for(unsigned s = 0; s < tgts; s++)
         {
+            puts("s");
             for(auto c = 0; c < srcfmt->channels; c++)
             {
+                puts("c");
                 Sint32 overrun = (position+s > srcs);
                 if(overrun and !looparound)
+                {
+                    puts("overrun stop");
                     return NORESAMPLING;
+                }
                 int srcpos = (position+s) % srcs;
                 auto whichfrom = srcpos*srcfmt->channels+c;
                 auto whichto = s*tgtfmt->channels+c;
@@ -67,8 +75,10 @@ int linear_resample_into_buffer
     
     else if (difference > 0) // upsample, use triangle filter to artificially create SUPER RETRO SOUNDING highs
     {
+        puts("over");
         for(unsigned s = 0; s < tgts; s++)
         {
+            puts("s");
             auto srcrate = srcfmt->samplerate;
             auto tgtrate = tgtfmt->samplerate;
             Uint64 which = position+s;
@@ -96,6 +106,7 @@ int linear_resample_into_buffer
             }
             for(auto c = 0; c < srcfmt->channels; c++)
             {
+                puts("c");
                 auto sample1 = get_sample((Uint8*)src+((lower*srcfmt->channels+c)*srcb), srcfmt);
                 auto sample2 = get_sample((Uint8*)src+((higher*srcfmt->channels+c)*srcb), srcfmt);
                 
@@ -110,9 +121,10 @@ int linear_resample_into_buffer
     else // difference > 0
     {   // downsample, use triangle filter for laziness's sake
         // convert input position to surrounding output positions
-        
+        puts("under");
         for(unsigned s = 0; s < tgts; s++)
         {
+            puts("s");
             auto srcrate = srcfmt->samplerate;
             auto tgtrate = tgtfmt->samplerate;
             Uint64 which = position+s;
@@ -132,19 +144,28 @@ int linear_resample_into_buffer
             
             for(auto c = 0; c < channels; c++)
             {
+                puts("c");
                 float transient = 0.0f;
                 float calibrate = (float)srcrate/tgtrate;
                 for(auto i = 0; i <= window_length; i++) // convolution
                 {
+                    puts("i");
                     auto pickup = (window_bottom+i);
                     if((window_top+i) < 0)
                         continue;
-                    while(pickup > srcs)
+                    if(pickup > srcs)
                     {
+                        puts("p");
                         if(!looparound)
-                            continue;
+                        {
+                            break;
+                        }
                         else
-                            pickup -= srcs;
+                        {
+                            while(pickup > srcs)
+                                pickup -= srcs;
+                        }
+                        puts("pickuping");
                     }
                     Sint32 hiorder_distance = (Sint64)(i*tgtrate+hiorder_bottom) - hiorder_position;
                     if(hiorder_distance < 0)
@@ -166,4 +187,5 @@ int linear_resample_into_buffer
             }
         }
     }
+    puts("end resample");
 }

@@ -40,13 +40,17 @@ int main(int argc, char * argv[])
         fauxmix_emitter_fire(emitter3);
     }
     
-    SDL_Delay(50);
-    while(fauxmix_emitter_status(emitter1))
+    SDL_Delay(500);
+    while(fauxmix_emitter_status(emitter1) > 0)
     {
         SDL_Delay(100);
         if(fauxmix_sample_status(sample1) == -1)
             break;
+        else if(fauxmix_sample_status(sample1) == -2)
+            puts("mayday! no such sample in shadow!");
     }
-    
+    puts("broke out");
+    SDL_Delay(100);
+    SDL_CloseAudio();
     return 0;
 }

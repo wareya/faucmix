@@ -17,7 +17,10 @@ emitter::~emitter()
 void * emitter::generateframe(SDL_AudioSpec * spec, unsigned int len)
 {
     if(!info.playing or !stream->ready())
+    {
         return nullptr;
+        puts("nullptr");
+    }
     
     if(stream->channels() == spec->channels)
     {

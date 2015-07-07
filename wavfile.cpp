@@ -161,6 +161,7 @@ int t_wavfile_load(void * etc)
             if(ferror(file) or feof(file) or ftell(file) >= filesize)
                 goto out; // double break pls
         }
+        puts("loading");
     }
     out:
     

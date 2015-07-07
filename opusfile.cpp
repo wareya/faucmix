@@ -3,7 +3,7 @@
 #include <opusfile.h>
 
 #include <stdio.h>
-
+#include <iostream>
 wavfile * opusfile_load (const char * filename)
 {
     puts("loading opus sample");
@@ -32,14 +32,31 @@ int t_opusfile_load(void * etc)
     
     auto buffer = malloc(bytes);
     
-    auto r = op_read_stereo(myfile, (opus_int16*)buffer, values);
-    if(r < 0)
+    int prev, next;
+    next = op_current_link(myfile);
+    auto addr = (opus_int16*)buffer;
+    std::cout << "links: " << op_link_count(myfile) << "\n";
+    std::cout << "len: " << samples << "\n";
+    do
     {
-        self->status = -1;
-        free(buffer);
-        puts("failed loading opus sample");
-        return 0;
-    }
+        prev = next;
+        auto r = op_read_stereo(myfile, op_pcm_tell(myfile)*2+addr, values);
+        if(r < 0)
+        {
+            self->status = -1;
+            free(buffer);
+            puts("failed loading opus sample");
+            return 0;
+        }
+        else if (r == 0)
+            break;
+        
+        next = op_current_link(myfile);
+//        puts("chunk through");
+//        std::cout << "read " << r << "\n";
+    } while (prev != next or op_pcm_tell(myfile) < samples);
+    
+    std::cout << "prev " << prev << " next " << next << "\n";
     
     self->format.isfloatingpoint = false;
     self->format.channels = 2;

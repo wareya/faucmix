@@ -3,6 +3,8 @@
 #include "format.hpp"
 #include "lcm.hpp"
 
+#include <iostream>
+
 wavstream::wavstream(wavfile * given) // TODO: SEPARATE INSTANTIATION OF WAVSTREAM FROM WAVFILE
 {
     sample = given;
@@ -66,11 +68,11 @@ void * wavstream::generateframe(SDL_AudioSpec * spec, unsigned int len, emitteri
     {
         position = position % (sample->samples*spec->freq);
     }
-    else if(position*(Uint64)sample->format.samplerate/spec->freq > sample->samples)
+    else if(position*(Uint64)fuck2.samplerate/spec->freq > sample->samples)
     {
         info->playing = false;
+        puts("nonplaying");
     }
-    
     return buffer;
 }
 void wavstream::fire(emitterinfo * info)

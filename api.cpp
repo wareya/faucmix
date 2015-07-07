@@ -200,12 +200,14 @@ DLLEXPORT void fauxmix_sample_kill(Uint32 sample)
 }
 DLLEXPORT int fauxmix_sample_status(Uint32 sample)
 {
-    if(sampleshadow.count(sample) != 0)
-    {
-        return sampleshadow[sample].status;
-    }
-    else
-        return -2;
+    int ret;
+    shadowlock.lock();
+        if(sampleshadow.count(sample) != 0)
+            ret = sampleshadow[sample].status;
+        else
+            ret = -2;
+    shadowlock.unlock();
+    return ret;
 }
 
 
@@ -230,12 +232,14 @@ DLLEXPORT Uint32 fauxmix_emitter_create(Uint32 sample)
  
 DLLEXPORT int fauxmix_emitter_status(Uint32 id)
 {
-    if(emittershadow.count(id) != 0)
-    {
-        return emittershadow[id].status;
-    }
-    else
-        return -2;
+    int ret;
+    shadowlock.lock();
+        if(emittershadow.count(id) != 0)
+            ret = emittershadow[id].status;
+        else
+            ret = -2;
+    shadowlock.unlock();
+    return ret;
 }
 
 DLLEXPORT int fauxmix_emitter_volumes(Uint32 id, float left, float right)
