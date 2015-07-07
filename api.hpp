@@ -1,7 +1,7 @@
 #ifndef INCLUDED_API
 #define INCLUDED_API
 
-#define DLLEXPORT extern "C" __attribute__((visibility("default")))
+#define DLLEXPORT extern "C" __declspec(dllexport)  __attribute__((visibility("default")))
 
 #include "format.hpp"
 #include "wavstream.hpp"
