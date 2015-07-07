@@ -13,15 +13,35 @@
 
 #include "global.hpp"
 
-DLLEXPORT void fauxmix_dll_init();
+#ifdef GAME_MAKER
+typedef double TYPE_NM;
+typedef double TYPE_ID;
+typedef double TYPE_EC;
+typedef double TYPE_VD;
+typedef double TYPE_BL;
+typedef double TYPE_FT;
+typedef char * TYPE_ST;
+#else
+typedef Sint32 TYPE_NM;
+typedef Uint32 TYPE_ID;
+typedef Sint32 TYPE_EC;
+typedef void TYPE_VD;
+typedef bool TYPE_BL;
+typedef float TYPE_FT;
+typedef const char * TYPE_ST;
+#endif
 
-DLLEXPORT bool fauxmix_use_float_output(bool b);
+DLLEXPORT TYPE_VD fauxmix_dll_init();
 
-DLLEXPORT bool fauxmix_init(int samplerate, bool mono, int samples);
-DLLEXPORT int fauxmix_get_samplerate();
-DLLEXPORT int fauxmix_get_channels();
-DLLEXPORT int fauxmix_get_samples();
-DLLEXPORT bool fauxmix_is_ducking();
+DLLEXPORT TYPE_VD fauxmix_use_float_output(TYPE_BL b);
+
+DLLEXPORT TYPE_BL fauxmix_init(TYPE_NM samplerate, TYPE_BL mono, TYPE_NM samples);
+DLLEXPORT TYPE_NM fauxmix_get_samplerate();
+DLLEXPORT TYPE_NM fauxmix_get_channels();
+DLLEXPORT TYPE_NM fauxmix_get_samples();
+DLLEXPORT TYPE_BL fauxmix_is_ducking();
+
+DLLEXPORT TYPE_EC fauxmix_channel(TYPE_ID id, TYPE_FT volume);
 
 /*
  * Samples have to be loaded on a thread or else client game logic would cause synchronous disk IO
@@ -33,28 +53,19 @@ DLLEXPORT bool fauxmix_is_ducking();
  * and it's up to you to kill them if they fail or unload
  */
 #include "wavfile.hpp"
-DLLEXPORT Uint32 fauxmix_sample_load(const char * filename);
-DLLEXPORT int fauxmix_sample_status(Uint32 sample);
-DLLEXPORT int fauxmix_sample_volume(Uint32 sample, float volume);
-DLLEXPORT void fauxmix_sample_kill(Uint32 sample);
+DLLEXPORT TYPE_ID fauxmix_sample_load(TYPE_ST filename);
+DLLEXPORT TYPE_EC fauxmix_sample_status(TYPE_ID sample);
+DLLEXPORT TYPE_EC fauxmix_sample_volume(TYPE_ID sample, TYPE_FT volume);
+DLLEXPORT TYPE_VD fauxmix_sample_kill(TYPE_ID sample);
 
 #include "emitter.hpp"
-DLLEXPORT Uint32 fauxmix_emitter_create(Uint32 sample);
-DLLEXPORT int fauxmix_emitter_status(Uint32 mine);
-DLLEXPORT int fauxmix_emitter_volumes(Uint32 mine, float left, float right);
-DLLEXPORT int fauxmix_emitter_loop(Uint32 mine, bool whether);
-DLLEXPORT int fauxmix_emitter_pitch(Uint32 mine, float ratefactor);
-DLLEXPORT int fauxmix_emitter_fire(Uint32 mine);
-DLLEXPORT int fauxmix_emitter_cease(Uint32 mine);
-DLLEXPORT void fauxmix_emitter_kill(Uint32 mine);
+DLLEXPORT TYPE_ID fauxmix_emitter_create(TYPE_ID sample);
+DLLEXPORT TYPE_EC fauxmix_emitter_status(TYPE_ID mine);
+DLLEXPORT TYPE_EC fauxmix_emitter_volumes(TYPE_ID mine, TYPE_FT left, TYPE_FT right);
+DLLEXPORT TYPE_EC fauxmix_emitter_loop(TYPE_ID mine, TYPE_BL whether);
+DLLEXPORT TYPE_EC fauxmix_emitter_pitch(TYPE_ID mine, TYPE_FT ratefactor);
+DLLEXPORT TYPE_EC fauxmix_emitter_fire(TYPE_ID mine);
+DLLEXPORT TYPE_EC fauxmix_emitter_cease(TYPE_ID mine);
+DLLEXPORT TYPE_VD fauxmix_emitter_kill(TYPE_ID mine);
 
-
-/*
-fauxmix_emitter_create(sample)
-fauxmix_emitter_status(emitter)
-fauxmix_emitter_volumes(emitter, left, right)
-fauxmix_emitter_fire(emitter)
-fauxmix_emitter_cease(emitter)
-fauxmix_emitter_kill(emitter)
-*/
 #endif

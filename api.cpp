@@ -14,7 +14,7 @@
 #include "global.hpp"
 bool isfloat;
 
-DLLEXPORT void fauxmix_dll_init()
+DLLEXPORT TYPE_VD fauxmix_dll_init()
 {
     initiated = false;
     volume = 1.0f;
@@ -22,7 +22,7 @@ DLLEXPORT void fauxmix_dll_init()
     isfloat = false;
 }
 
-DLLEXPORT bool fauxmix_use_float_output(bool b)
+DLLEXPORT TYPE_VD fauxmix_use_float_output(TYPE_BL b)
 {
     isfloat = b;
 }
@@ -30,7 +30,7 @@ DLLEXPORT bool fauxmix_use_float_output(bool b)
 SDL_AudioSpec want;
 SDL_AudioSpec got;
 
-DLLEXPORT bool fauxmix_init(int samplerate, bool mono, int samples)
+DLLEXPORT TYPE_BL fauxmix_init(TYPE_BM samplerate, TYPE_BL mono, TYPE_NM samples)
 {
     want.freq = samplerate;
     if(!isfloat)
@@ -56,7 +56,7 @@ DLLEXPORT bool fauxmix_init(int samplerate, bool mono, int samples)
     
     return true;
 }
-DLLEXPORT int fauxmix_get_samplerate()
+DLLEXPORT TYPE_NM fauxmix_get_samplerate()
 {
     if(initiated)
         return got.freq;
@@ -64,7 +64,7 @@ DLLEXPORT int fauxmix_get_samplerate()
         return -1;
 }
 
-DLLEXPORT int fauxmix_get_channels()
+DLLEXPORT TYPE_NM fauxmix_get_channels()
 {
     if(initiated)
         return got.channels;
@@ -72,7 +72,7 @@ DLLEXPORT int fauxmix_get_channels()
         return -1;
 }
 
-DLLEXPORT int fauxmix_get_samples()
+DLLEXPORT TYPE_NM fauxmix_get_samples()
 {
     if(initiated)
         return got.samples;
@@ -80,12 +80,12 @@ DLLEXPORT int fauxmix_get_samples()
         return -1;
 }
 
-DLLEXPORT bool fauxmix_is_ducking()
+DLLEXPORT TYPE_BL fauxmix_is_ducking()
 {
     return ducker > 1.0f;
 }
 
-DLLEXPORT int fauxmix_channel(Uint32 id, float volume)
+DLLEXPORT TYPE_EC fauxmix_channel(TYPE_ID id, TYPE_FT volume)
 {
     commandlock.lock();
         cmdbuffer.push_back([id, volume]()
@@ -98,6 +98,7 @@ DLLEXPORT int fauxmix_channel(Uint32 id, float volume)
     commandlock.unlock();
     return 0;
 }
+
 /*
  * Samples have to be loaded on a thread or else client game logic would cause synchronous disk IO
  * However, this means that the "load sample" command can't give a definitive response on the validity of a sample file
@@ -112,7 +113,7 @@ DLLEXPORT int fauxmix_channel(Uint32 id, float volume)
 #include "global.hpp"
 
 #include <string.h>
-DLLEXPORT Uint32 fauxmix_sample_load(const char * filename)
+DLLEXPORT TYPE_ID fauxmix_sample_load(TYPE_ST filename)
 {
     auto i = sampleids.New();
     
@@ -155,7 +156,7 @@ DLLEXPORT Uint32 fauxmix_sample_load(const char * filename)
     
     return i;
 }
-DLLEXPORT int fauxmix_sample_volume(Uint32 sample, float volume)
+DLLEXPORT TYPE_EC fauxmix_sample_volume(TYPE_ID sample, TYPE_FT volume)
 {
     commandlock.lock();
         if(samples.count(sample) != 0)
@@ -171,7 +172,7 @@ DLLEXPORT int fauxmix_sample_volume(Uint32 sample, float volume)
             return -1;
     commandlock.unlock();
 }
-DLLEXPORT void fauxmix_sample_kill(Uint32 sample)
+DLLEXPORT TYPE_VD fauxmix_sample_kill(TYPE_ID sample)
 {
     sampleids.Free(sample);
     commandlock.lock();
@@ -198,7 +199,7 @@ DLLEXPORT void fauxmix_sample_kill(Uint32 sample)
         });
     commandlock.unlock();
 }
-DLLEXPORT int fauxmix_sample_status(Uint32 sample)
+DLLEXPORT TYPE_EC fauxmix_sample_status(TYPE_ID sample)
 {
     int ret;
     shadowlock.lock();
@@ -212,7 +213,7 @@ DLLEXPORT int fauxmix_sample_status(Uint32 sample)
 
 
 
-DLLEXPORT Uint32 fauxmix_emitter_create(Uint32 sample)
+DLLEXPORT TYPE_ID fauxmix_emitter_create(TYPE_ID sample)
 {
     auto i = emitterids.New();
     commandlock.lock();
@@ -230,7 +231,7 @@ DLLEXPORT Uint32 fauxmix_emitter_create(Uint32 sample)
     return i;
 }
  
-DLLEXPORT int fauxmix_emitter_status(Uint32 id)
+DLLEXPORT TYPE_EC fauxmix_emitter_status(TYPE_ID id)
 {
     int ret;
     shadowlock.lock();
@@ -242,7 +243,7 @@ DLLEXPORT int fauxmix_emitter_status(Uint32 id)
     return ret;
 }
 
-DLLEXPORT int fauxmix_emitter_volumes(Uint32 id, float left, float right)
+DLLEXPORT TYPE_EC fauxmix_emitter_volumes(TYPE_ID id, TYPE_FT left, TYPE_FT right)
 {
     float fadewindow = float(got.freq)*0.01f;
     if(emitterids.Exists(id))
@@ -268,7 +269,7 @@ DLLEXPORT int fauxmix_emitter_volumes(Uint32 id, float left, float right)
         return -1;
 }
 
-DLLEXPORT int fauxmix_emitter_loop(Uint32 id, bool whether)
+DLLEXPORT TYPE_EC fauxmix_emitter_loop(TYPE_ID id, TYPE_BL whether)
 {
     if(emitterids.Exists(id))
     {
@@ -287,7 +288,7 @@ DLLEXPORT int fauxmix_emitter_loop(Uint32 id, bool whether)
         return -1;
 }
 
-DLLEXPORT int fauxmix_emitter_channel(Uint32 id, int channel)
+DLLEXPORT TYPE_EC fauxmix_emitter_channel(TYPE_ID id, TYPE_ID channel)
 {
     if(emitterids.Exists(id))
     {
