@@ -30,7 +30,7 @@ DLLEXPORT TYPE_VD fauxmix_use_float_output(TYPE_BL b)
 SDL_AudioSpec want;
 SDL_AudioSpec got;
 
-DLLEXPORT TYPE_BL fauxmix_init(TYPE_BM samplerate, TYPE_BL mono, TYPE_NM samples)
+DLLEXPORT TYPE_BL fauxmix_init(TYPE_NM samplerate, TYPE_BL mono, TYPE_NM samples)
 {
     want.freq = samplerate;
     if(!isfloat)
@@ -307,7 +307,7 @@ DLLEXPORT TYPE_EC fauxmix_emitter_channel(TYPE_ID id, TYPE_ID channel)
         return -1;
 }
 
-DLLEXPORT int fauxmix_emitter_pitch(Uint32 id, float ratefactor)
+DLLEXPORT TYPE_EC fauxmix_emitter_pitch(TYPE_ID id, TYPE_FT ratefactor)
 {
     if(emitterids.Exists(id))
     {
@@ -326,7 +326,7 @@ DLLEXPORT int fauxmix_emitter_pitch(Uint32 id, float ratefactor)
         return -1;
 }
 
-DLLEXPORT int fauxmix_emitter_fire(Uint32 id)
+DLLEXPORT TYPE_EC fauxmix_emitter_fire(TYPE_ID id)
 {
     if(emitterids.Exists(id))
     {
@@ -345,7 +345,7 @@ DLLEXPORT int fauxmix_emitter_fire(Uint32 id)
     else
         return -1;
 }
-DLLEXPORT int fauxmix_emitter_cease(Uint32 id)
+DLLEXPORT TYPE_VD fauxmix_emitter_cease(TYPE_ID id)
 {
     if(emitterids.Exists(id))
     {
@@ -364,7 +364,7 @@ DLLEXPORT int fauxmix_emitter_cease(Uint32 id)
     else
         return -1;
 }
-DLLEXPORT void fauxmix_emitter_kill(Uint32 id)
+DLLEXPORT TYPE_VD fauxmix_emitter_kill(TYPE_ID id)
 {
     emitterids.Free(id);
     commandlock.lock();
