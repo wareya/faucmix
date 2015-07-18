@@ -37,7 +37,7 @@ DLLEXPORT TYPE_BL fauxmix_init(TYPE_NM samplerate, TYPE_BL mono, TYPE_NM samples
         want.format = AUDIO_S16;
     else
         want.format = AUDIO_F32;
-    want.channels = 2;
+    want.channels = (mono < 0.5)?1:2;
     want.samples = samples;
     want.callback = respondtoSDL;
     want.userdata = &got;
@@ -345,7 +345,7 @@ DLLEXPORT TYPE_EC fauxmix_emitter_fire(TYPE_ID id)
     else
         return -1;
 }
-DLLEXPORT TYPE_VD fauxmix_emitter_cease(TYPE_ID id)
+DLLEXPORT TYPE_EC fauxmix_emitter_cease(TYPE_ID id)
 {
     if(emitterids.Exists(id))
     {
