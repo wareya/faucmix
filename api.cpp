@@ -88,13 +88,13 @@ DLLEXPORT TYPE_BL fauxmix_is_ducking()
 DLLEXPORT TYPE_EC fauxmix_channel(TYPE_ID id, TYPE_FT volume)
 {
     commandlock.lock();
-        cmdbuffer.push_back([id, volume]()
+        cmdbuffer.push_back({SDL_GetTicks(), [id, volume]()
         {
             if(mixchannels.count(id) == 0 and id >= 0)
             {
                 mixchannels[id] = (volume > 1.0f ? 1.0f : volume);
             }
-        });
+        }});
     commandlock.unlock();
     return 0;
 }
@@ -118,7 +118,7 @@ DLLEXPORT TYPE_ID fauxmix_sample_load(TYPE_ST filename)
     auto i = sampleids.New();
     
     commandlock.lock();
-        cmdbuffer.push_back([i, filename]()
+        cmdbuffer.push_back({SDL_GetTicks(), [i, filename]()
         {
             auto b = strlen(filename);
             int a;
@@ -151,7 +151,7 @@ DLLEXPORT TYPE_ID fauxmix_sample_load(TYPE_ST filename)
                 samples.emplace(i, n);
                 return;
             }
-        });
+        }});
     commandlock.unlock();
     
     return i;
@@ -161,11 +161,11 @@ DLLEXPORT TYPE_EC fauxmix_sample_volume(TYPE_ID sample, TYPE_FT volume)
     commandlock.lock();
         if(samples.count(sample) != 0)
         {
-            cmdbuffer.push_back([sample, volume]()
+            cmdbuffer.push_back({SDL_GetTicks(), [sample, volume]()
             {
                 auto mine = samples[sample];
                 mine->volume = volume;
-            });
+            }});
             return 0;
         }
         else
@@ -176,7 +176,7 @@ DLLEXPORT TYPE_VD fauxmix_sample_kill(TYPE_ID sample)
 {
     sampleids.Free(sample);
     commandlock.lock();
-        cmdbuffer.push_back([sample]()
+        cmdbuffer.push_back({SDL_GetTicks(), [sample]()
         {
             if(samples.count(sample) != 0)
             {
@@ -196,7 +196,7 @@ DLLEXPORT TYPE_VD fauxmix_sample_kill(TYPE_ID sample)
                 }
                 samplestoemitters.erase(sample);
             }
-        });
+        }});
     commandlock.unlock();
 }
 DLLEXPORT TYPE_EC fauxmix_sample_status(TYPE_ID sample)
@@ -217,7 +217,7 @@ DLLEXPORT TYPE_ID fauxmix_emitter_create(TYPE_ID sample)
 {
     auto i = emitterids.New();
     commandlock.lock();
-        cmdbuffer.push_back([i, sample]()
+        cmdbuffer.push_back({SDL_GetTicks(), [i, sample]()
         {
             if(samples.count(sample) != 0)
             {
@@ -226,7 +226,7 @@ DLLEXPORT TYPE_ID fauxmix_emitter_create(TYPE_ID sample)
                 emitters.emplace(i, mine);
                 samplestoemitters[sample].push_back(i);
             }
-        });
+        }});
     commandlock.unlock();
     return i;
 }
@@ -249,7 +249,7 @@ DLLEXPORT TYPE_EC fauxmix_emitter_volumes(TYPE_ID id, TYPE_FT left, TYPE_FT righ
     if(emitterids.Exists(id))
     {
         commandlock.lock();
-            cmdbuffer.push_back([id, left, right, fadewindow]()
+            cmdbuffer.push_back({SDL_GetTicks(), [id, left, right, fadewindow]()
             {
                 if(emitters.count(id) != 0)
                 {
@@ -261,7 +261,7 @@ DLLEXPORT TYPE_EC fauxmix_emitter_volumes(TYPE_ID id, TYPE_FT left, TYPE_FT righ
                     mix->remaining = ceil(fadewindow);
                     //std::cout << mix->target_l << " " << mix->vol_l << " " << (mix->target_l - mix->vol_l) << "\n";
                 }
-            });
+            }});
         commandlock.unlock();
         return 0;
     }
@@ -274,13 +274,13 @@ DLLEXPORT TYPE_EC fauxmix_emitter_loop(TYPE_ID id, TYPE_BL whether)
     if(emitterids.Exists(id))
     {
         commandlock.lock();
-            cmdbuffer.push_back([id, whether]()
+            cmdbuffer.push_back({SDL_GetTicks(), [id, whether]()
             {
                 if(emitters.count(id) != 0)
                 {
                     emitters[id]->info.loop = whether;
                 }
-            });
+            }});
         commandlock.unlock();
         return 0;
     }
@@ -293,13 +293,13 @@ DLLEXPORT TYPE_EC fauxmix_emitter_channel(TYPE_ID id, TYPE_ID channel)
     if(emitterids.Exists(id))
     {
         commandlock.lock();
-            cmdbuffer.push_back([id, channel]()
+            cmdbuffer.push_back({SDL_GetTicks(), [id, channel]()
             {
                 if(emitters.count(id) != 0)
                 {
                     emitters[id]->mix.channel = channel;
                 }
-            });
+            }});
         commandlock.unlock();
         return 0;
     }
@@ -312,13 +312,13 @@ DLLEXPORT TYPE_EC fauxmix_emitter_pitch(TYPE_ID id, TYPE_FT ratefactor)
     if(emitterids.Exists(id))
     {
         commandlock.lock();
-            cmdbuffer.push_back([id, ratefactor]()
+            cmdbuffer.push_back({SDL_GetTicks(), [id, ratefactor]()
             {
                 if(emitters.count(id) != 0)
                 {
                     emitters[id]->info.ratefactor = ratefactor;
                 }
-            });
+            }});
         commandlock.unlock();
         return 0;
     }
@@ -331,14 +331,14 @@ DLLEXPORT TYPE_EC fauxmix_emitter_fire(TYPE_ID id)
     if(emitterids.Exists(id))
     {
         commandlock.lock();
-            cmdbuffer.push_back([id]()
+            cmdbuffer.push_back({SDL_GetTicks(), [id]()
             {
                 if(emitters.count(id) != 0)
                 {
                     auto mine = emitters[id];
                     mine->fire();
                 }
-            });
+            }});
         commandlock.unlock();
         return 0;
     }
@@ -350,14 +350,14 @@ DLLEXPORT TYPE_EC fauxmix_emitter_cease(TYPE_ID id)
     if(emitterids.Exists(id))
     {
         commandlock.lock();
-            cmdbuffer.push_back([id]()
+            cmdbuffer.push_back({SDL_GetTicks(), [id]()
             {
                 if(emitters.count(id) != 0)
                 {
                     auto mine = emitters[id];
                     mine->cease();
                 }
-            });
+            }});
         commandlock.unlock();
         return 0;
     }
@@ -368,7 +368,7 @@ DLLEXPORT TYPE_VD fauxmix_emitter_kill(TYPE_ID id)
 {
     emitterids.Free(id);
     commandlock.lock();
-        cmdbuffer.push_back([id]()
+        cmdbuffer.push_back({SDL_GetTicks(), [id]()
         {
             if(emitters.count(id) != 0)
             {
@@ -376,6 +376,6 @@ DLLEXPORT TYPE_VD fauxmix_emitter_kill(TYPE_ID id)
                 emitters.erase(id);
                 emitterids.Free(id);
             }
-        });
+        }});
     commandlock.unlock();
 }

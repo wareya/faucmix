@@ -53,7 +53,11 @@ extern SDL_AudioSpec got;
 
 /* cmdbuffer */
 
-typedef std::function<void()> command;
+struct command
+{
+    Uint32 ms;
+    std::function<void()> func;
+};
 
 extern std::mutex commandlock;
 extern std::deque<command> cmdbuffer;

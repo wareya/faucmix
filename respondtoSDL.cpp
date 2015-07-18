@@ -36,88 +36,97 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
         {
             copybuffer.push_back(cmdbuffer[0]);
             cmdbuffer.pop_front();
-            puts("commandsing");
         }
+        puts("commandsing");
     commandlock.unlock();
     
-    for(auto command : copybuffer)
-    {
-        command();
-    }
+    Uint32 start = SDL_GetTicks();
+    Uint32 cmddelay = float(len)/fmt.samplerate*1000;
     
-    /* Get emitter responses */
-    for(auto s : emitters)
-    {
-        auto stream = s.second;
-        auto f = stream->generateframe(&spec, len);
-        if(f != nullptr)
-        {
-            responses.push_back(f);
-            infos.push_back(&stream->mix);
-        }
-    }
-    /* Mix responses into output stream */
     int used = 0;
-    int maxloops = 100000;
-    while(used*block < len)
+    for(int i = 0; i <= copybuffer.size()/*yes*/; i++)
     {
-        maxloops -= 1;
-        if(maxloops < 0)
-            break;
-        if(ducker > 1.0f)
-        {
-            ducker -= 1.0f/fmt.samplerate;
-            if(ducker < 1.0f)
-                ducker = 1.0f;
-        }
-        if(ducker < 1.0f) // failsafe
-            ducker = 1.0f;
+        int subwindow;
+        if(i < copybuffer.size())
+            subwindow = copybuffer[i].ms + cmddelay - start;
+        else
+            subwindow = len/block - used;
         
-        std::vector<float> transient(channels);
-        for(auto c = 0; c < channels; c++)
+        /* Get emitter responses */
+        for(auto s : emitters)
         {
-            transient[c] = 0.0f;
-            for(auto i = 0; i < responses.size(); i++)
+            auto stream = s.second;
+            auto f = stream->generateframe(&spec, subwindow);
+            if(f != nullptr)
             {
-                auto response = responses[i];
-                auto& info = infos[i];
-                
-                float realvol;
-                if (channels == 2)
-                    realvol = ((c == 0)?info->vol_l:info->vol_r);
-                else
-                    realvol = (info->vol_l + info->vol_r)/2;
-                if(mixchannels.count(info->channel))
-                    realvol *= mixchannels[info->channel];
-                
-                transient[c] += get_sample((Uint8*)response+(used*channels+c)*sample, &fmt) * realvol;
-                
-                if(c+1 == channels and info->remaining > 0)
+                responses.push_back(f);
+                infos.push_back(&stream->mix);
+            }
+        }
+        /* Mix responses into output stream */
+        int maxloops = 100000;
+        int prog = 0;
+        while(used*block < len and prog < subwindow and maxloops > 0)
+        {
+            maxloops -= 1;
+            if(ducker > 1.0f)
+            {
+                ducker -= 1.0f/fmt.samplerate;
+                if(ducker < 1.0f)
+                    ducker = 1.0f;
+            }
+            if(ducker < 1.0f) // failsafe
+                ducker = 1.0f;
+            
+            std::vector<float> transient(channels);
+            for(auto c = 0; c < channels; c++)
+            {
+                transient[c] = 0.0f;
+                for(auto i = 0; i < responses.size(); i++)
                 {
-                    info->vol_l += info->add_l;
-                    info->vol_r += info->add_r;
-                    info->remaining -= 1;
-                    if(info->remaining == 0)
+                    auto response = responses[i];
+                    auto& info = infos[i];
+                    
+                    float realvol;
+                    if (channels == 2)
+                        realvol = ((c == 0)?info->vol_l:info->vol_r);
+                    else
+                        realvol = (info->vol_l + info->vol_r)/2;
+                    if(mixchannels.count(info->channel))
+                        realvol *= mixchannels[info->channel];
+                    
+                    transient[c] += get_sample((Uint8*)response+(used*channels+c)*sample, &fmt) * realvol;
+                    
+                    if(c+1 == channels and info->remaining > 0)
                     {
-                        info->vol_l = info->target_l;
-                        info->vol_r = info->target_r;
+                        info->vol_l += info->add_l;
+                        info->vol_r += info->add_r;
+                        info->remaining -= 1;
+                        if(info->remaining == 0)
+                        {
+                            info->vol_l = info->target_l;
+                            info->vol_r = info->target_r;
+                        }
                     }
                 }
+                if(fabsf(transient[c]) > ducker)
+                {
+                    ducker = fabsf(transient[c])*1.1f; // making the brickwall ducker overduck results in higher ducker quality???? WTF
+                    puts("Ducking!");
+                }
             }
-            if(fabsf(transient[c]) > ducker)
+            for(auto c = 0; c < spec.channels; c++)
             {
-                ducker = fabsf(transient[c])*1.1f; // making the brickwall ducker overduck results in higher ducker quality???? WTF
-                puts("Ducking!");
+                set_sample(stream+(used*channels+c)*sample, &fmt, transient[c]/ducker);
             }
+            used += 1;
+            prog += 1;
         }
-        for(auto c = 0; c < spec.channels; c++)
-        {
-            set_sample(stream+(used*channels+c)*sample, &fmt, transient[c]/ducker);
-        }
-        used += 1;
+        responses.clear();
+        
+        if(i < copybuffer.size())
+            copybuffer[i].func();
     }
-    responses.clear();
-    
     /* Build shadow data */
     shadowlock.lock();
         emittershadow.clear();
