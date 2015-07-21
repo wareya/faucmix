@@ -22,6 +22,7 @@ std::vector<mixinfo *> infos;
 
 void respondtoSDL(void * udata, Uint8 * stream, int len)
 {
+    // get the output stream spec in a way that certain faucet mixer functions understand
     auto& spec = *(SDL_AudioSpec *)udata;
     auto fmt = audiospec_to_wavformat(&spec);
     
@@ -38,15 +39,19 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
             cmdbuffer.pop_front();
         }
         puts("commandsing");
+    
+    // we need to store the time that we strt mixing so that we can compare it 
+    Uint32 start = SDL_GetTicks(); // this must be inside of the commandlock for thread safety purposes
+    // all commands up to this point should (deterministically speaking) have times from before [start]. So we add a delay to their timestamp which is as long as their expected backwards latency.
+    Uint32 cmddelay = float(len)/fmt.samplerate*1000;
     commandlock.unlock();
     
-    Uint32 start = SDL_GetTicks();
-    Uint32 cmddelay = float(len)/fmt.samplerate*1000;
+    /* generate samples in between executing commands */
     
-    int used = 0;
-    for(int i = 0; i <= copybuffer.size()/*yes*/; i++)
+    int used = 0; // number of samples generated
+    for(int i = 0; i <= copybuffer.size()/*yes -- one more stream iteration than number of commands*/; i++)
     {
-        int subwindow;
+        int subwindow; // length in stream up to next command or end of stream
         if(i < copybuffer.size())
             subwindow = copybuffer[i].ms + cmddelay - start;
         else
@@ -124,7 +129,7 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
         }
         responses.clear();
         
-        if(i < copybuffer.size())
+        if(i < copybuffer.size()) // run command from this iteration
             copybuffer[i].func();
     }
     /* Build shadow data */
