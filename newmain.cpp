@@ -41,13 +41,29 @@ int main(int argc, char * argv[])
     }
     
     SDL_Delay(500);
-    while(fauxmix_emitter_status(emitter1) > 0)
+    if(argc <= 2) // normal
     {
-        SDL_Delay(100);
-        if(fauxmix_sample_status(sample1) == -1)
-            break;
-        else if(fauxmix_sample_status(sample1) == -2)
-            puts("mayday! no such sample in shadow!");
+        while(fauxmix_emitter_status(emitter1) > 0)
+        {
+            SDL_Delay(100);
+            if(fauxmix_sample_status(sample1) == -1)
+                break;
+            else if(fauxmix_sample_status(sample1) == -2)
+                puts("mayday! no such sample in shadow!");
+        }
+    }
+    else // stress test
+    {
+        while(1)
+        {
+            //SDL_Delay(8);
+            
+            fauxmix_emitter_fire(emitter1);
+            if(fauxmix_sample_status(sample1) == -1)
+                break;
+            else if(fauxmix_sample_status(sample1) == -2)
+                puts("mayday! no such sample in shadow!");
+        }
     }
     puts("broke out");
     SDL_Delay(100);

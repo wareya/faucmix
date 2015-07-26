@@ -33,7 +33,7 @@ void * emitter::generateframe(SDL_AudioSpec * spec, unsigned int len)
         auto badbuffer = stream->generateframe(&temp, len*temp.channels/spec->channels, &info);
         auto goodlen = len;
         
-        if(DSPlen != goodlen and DSPbuffer != nullptr)
+        if(goodlen > DSPlen and DSPbuffer != nullptr)
         {
             free(DSPbuffer);
             DSPbuffer = nullptr;

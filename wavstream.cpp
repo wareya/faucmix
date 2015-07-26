@@ -41,8 +41,9 @@ void * wavstream::generateframe(SDL_AudioSpec * spec, unsigned int len, emitteri
     
     auto outputsize = len; // output bytes 
     len /= specblock; // output samples
-    if(outputsize != bufferlen and buffer != nullptr)
+    if(outputsize > bufferlen and buffer != nullptr)
     {
+        std::cout << "reallocating buffer " << bufferlen << " to " << outputsize << "\n";
         free(buffer);
         buffer = nullptr;
     }

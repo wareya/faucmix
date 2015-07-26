@@ -38,8 +38,8 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
             copybuffer.push_back(cmdbuffer[0]);
             cmdbuffer.pop_front();
         }
-        if(copybuffer.size() > 0)
-            puts("commandsing");
+        //if(copybuffer.size() > 0)
+         //   puts("commandsing");
         
         // we need to store the time that we strt mixing so that we can compare it 
         Uint32 start = SDL_GetTicks(); // this must be inside of the commandlock for thread safety purposes
@@ -59,76 +59,79 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
             subwindow = len - used*block;
         
         /* Get emitter responses */
-        for(auto s : emitters)
+        if(subwindow > 0)
         {
-            auto stream = s.second;
-            auto f = stream->generateframe(&spec, subwindow);
-            if(f != nullptr)
+            for(auto s : emitters)
             {
-                responses.push_back(f);
-                infos.push_back(&stream->mix);
-            }
-        }
-        /* Mix responses into output stream */
-        int maxloops = 100000;
-        int prog = 0;
-        while(used*block < len and prog*block < subwindow and maxloops > 0)
-        {
-            maxloops -= 1;
-            if(ducker > 1.0f)
-            {
-                ducker -= 1.0f/fmt.samplerate;
-                if(ducker < 1.0f)
-                    ducker = 1.0f;
-            }
-            if(ducker < 1.0f) // failsafe
-                ducker = 1.0f;
-            
-            std::vector<float> transient(channels);
-            for(auto c = 0; c < channels; c++)
-            {
-                transient[c] = 0.0f;
-                for(auto i = 0; i < responses.size(); i++)
+                auto stream = s.second;
+                auto f = stream->generateframe(&spec, subwindow);
+                if(f != nullptr)
                 {
-                    auto response = responses[i];
-                    auto& info = infos[i];
-                    
-                    float realvol;
-                    if (channels == 2)
-                        realvol = ((c == 0)?info->vol_l:info->vol_r);
-                    else
-                        realvol = (info->vol_l + info->vol_r)/2;
-                    if(mixchannels.count(info->channel))
-                        realvol *= mixchannels[info->channel];
-                    
-                    transient[c] += get_sample((Uint8*)response+(used*channels+c)*sample, &fmt) * realvol;
-                    
-                    if(c+1 == channels and info->remaining > 0)
+                    responses.push_back(f);
+                    infos.push_back(&stream->mix);
+                }
+            }
+            /* Mix responses into output stream */
+            long int maxloops = len;
+            int prog = 0;
+            while(used*block < len and prog*block < subwindow and maxloops > 0)
+            {
+                maxloops -= 1;
+                if(ducker > 1.0f)
+                {
+                    ducker -= 1.0f/fmt.samplerate;
+                    if(ducker < 1.0f)
+                        ducker = 1.0f;
+                }
+                if(ducker < 1.0f) // failsafe
+                    ducker = 1.0f;
+                
+                std::vector<float> transient(channels);
+                for(auto c = 0; c < channels; c++)
+                {
+                    transient[c] = 0.0f;
+                    for(auto i = 0; i < responses.size(); i++)
                     {
-                        info->vol_l += info->add_l;
-                        info->vol_r += info->add_r;
-                        info->remaining -= 1;
-                        if(info->remaining == 0)
+                        auto response = responses[i];
+                        auto& info = infos[i];
+                        
+                        float realvol;
+                        if (channels == 2)
+                            realvol = ((c == 0)?info->vol_l:info->vol_r);
+                        else
+                            realvol = (info->vol_l + info->vol_r)/2;
+                        if(mixchannels.count(info->channel))
+                            realvol *= mixchannels[info->channel];
+                        
+                        transient[c] += get_sample((Uint8*)response+(used*channels+c)*sample, &fmt) * realvol;
+                        
+                        if(c+1 == channels and info->remaining > 0)
                         {
-                            info->vol_l = info->target_l;
-                            info->vol_r = info->target_r;
+                            info->vol_l += info->add_l;
+                            info->vol_r += info->add_r;
+                            info->remaining -= 1;
+                            if(info->remaining == 0)
+                            {
+                                info->vol_l = info->target_l;
+                                info->vol_r = info->target_r;
+                            }
                         }
                     }
+                    if(fabsf(transient[c]) > ducker)
+                    {
+                        ducker = fabsf(transient[c])*1.1f; // making the brickwall ducker overduck results in higher ducker quality???? WTF
+                        puts("Ducking!");
+                    }
                 }
-                if(fabsf(transient[c]) > ducker)
+                for(auto c = 0; c < spec.channels; c++)
                 {
-                    ducker = fabsf(transient[c])*1.1f; // making the brickwall ducker overduck results in higher ducker quality???? WTF
-                    puts("Ducking!");
+                    set_sample(stream+(used*channels+c)*sample, &fmt, transient[c]/ducker);
                 }
+                used += 1;
+                prog += 1;
             }
-            for(auto c = 0; c < spec.channels; c++)
-            {
-                set_sample(stream+(used*channels+c)*sample, &fmt, transient[c]/ducker);
-            }
-            used += 1;
-            prog += 1;
+            responses.clear();
         }
-        responses.clear();
         
         if(i < copybuffer.size()) // run command from this iteration
             copybuffer[i].func();
