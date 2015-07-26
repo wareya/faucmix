@@ -72,7 +72,6 @@ void * wavstream::generateframe(SDL_AudioSpec * spec, unsigned int len, emitteri
     else if(position*(Uint64)fuck2.samplerate/spec->freq > sample->samples)
     {
         info->playing = false;
-        puts("nonplaying");
     }
     return buffer;
 }

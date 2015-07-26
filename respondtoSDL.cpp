@@ -44,7 +44,7 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
         // we need to store the time that we strt mixing so that we can compare it 
         Uint32 start = SDL_GetTicks(); // this must be inside of the commandlock for thread safety purposes
         // all commands up to this point should (deterministically speaking) have times from before [start]. So we add a delay to their timestamp which is as long as their expected backwards latency.
-        Uint32 cmddelay = float(len)/fmt.samplerate*1000;
+        Uint32 cmddelay = (len/block)*double(1000.0)/fmt.samplerate;
     commandlock.unlock();
     
     /* generate samples in between executing commands */
@@ -54,7 +54,19 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
     {
         int subwindow; // length in stream up to next command or end of stream
         if(i < copybuffer.size())
-            subwindow = copybuffer[i].ms + cmddelay - start;
+        {
+            if(copybuffer[i].ms > start) // this might happen if the clock changes while running, can never be too safe
+            {
+                copybuffer[i].ms = start;
+                puts("fixed clock!");
+            }
+            double offset = copybuffer[i].ms + cmddelay - start;
+            subwindow = offset*fmt.samplerate/1000 - used;
+            subwindow *= block;
+            if(used*block + subwindow > len)
+                subwindow = len - used*block;
+            
+        }
         else
             subwindow = len - used*block;
         
