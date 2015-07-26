@@ -103,7 +103,7 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
                         if(mixchannels.count(info->channel))
                             realvol *= mixchannels[info->channel];
                         
-                        transient[c] += get_sample((Uint8*)response+(used*channels+c)*sample, &fmt) * realvol;
+                        transient[c] += get_sample((Uint8*)response+(prog*channels+c)*sample, &fmt) * realvol;
                         
                         if(c+1 == channels and info->remaining > 0)
                         {
@@ -131,6 +131,7 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
                 prog += 1;
             }
             responses.clear();
+            infos.clear();
         }
         
         if(i < copybuffer.size()) // run command from this iteration
