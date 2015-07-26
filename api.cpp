@@ -5,6 +5,8 @@
 #include "stream.hpp"
 #include "emitter.hpp"
 
+#include "btime.hpp"
+
 #include <SDL2/SDL_audio.h>
 
 #include <iostream>
@@ -88,7 +90,7 @@ DLLEXPORT TYPE_BL fauxmix_is_ducking()
 DLLEXPORT TYPE_EC fauxmix_channel(TYPE_ID id, TYPE_FT volume)
 {
     commandlock.lock();
-        cmdbuffer.push_back({SDL_GetTicks(), [id, volume]()
+        cmdbuffer.push_back({get_us(), [id, volume]()
         {
             if(mixchannels.count(id) == 0 and id >= 0)
             {
@@ -120,7 +122,7 @@ DLLEXPORT TYPE_ID fauxmix_sample_load(TYPE_ST filename)
     auto i = sampleids.New();
     
     commandlock.lock();
-        cmdbuffer.push_back({SDL_GetTicks(), [i, filename]()
+        cmdbuffer.push_back({get_us(), [i, filename]()
         {
             #ifndef NO_OPUS
                 auto b = strlen(filename);
@@ -165,7 +167,7 @@ DLLEXPORT TYPE_EC fauxmix_sample_volume(TYPE_ID sample, TYPE_FT volume)
     commandlock.lock();
         if(samples.count(sample) != 0)
         {
-            cmdbuffer.push_back({SDL_GetTicks(), [sample, volume]()
+            cmdbuffer.push_back({get_us(), [sample, volume]()
             {
                 auto mine = samples[sample];
                 mine->volume = volume;
@@ -180,7 +182,7 @@ DLLEXPORT TYPE_VD fauxmix_sample_kill(TYPE_ID sample)
 {
     sampleids.Free(sample);
     commandlock.lock();
-        cmdbuffer.push_back({SDL_GetTicks(), [sample]()
+        cmdbuffer.push_back({get_us(), [sample]()
         {
             if(samples.count(sample) != 0)
             {
@@ -221,7 +223,7 @@ DLLEXPORT TYPE_ID fauxmix_emitter_create(TYPE_ID sample)
 {
     auto i = emitterids.New();
     commandlock.lock();
-        cmdbuffer.push_back({SDL_GetTicks(), [i, sample]()
+        cmdbuffer.push_back({get_us(), [i, sample]()
         {
             if(samples.count(sample) != 0)
             {
@@ -253,7 +255,7 @@ DLLEXPORT TYPE_EC fauxmix_emitter_volumes(TYPE_ID id, TYPE_FT left, TYPE_FT righ
     if(emitterids.Exists(id))
     {
         commandlock.lock();
-            cmdbuffer.push_back({SDL_GetTicks(), [id, left, right, fadewindow]()
+            cmdbuffer.push_back({get_us(), [id, left, right, fadewindow]()
             {
                 if(emitters.count(id) != 0)
                 {
@@ -278,7 +280,7 @@ DLLEXPORT TYPE_EC fauxmix_emitter_loop(TYPE_ID id, TYPE_BL whether)
     if(emitterids.Exists(id))
     {
         commandlock.lock();
-            cmdbuffer.push_back({SDL_GetTicks(), [id, whether]()
+            cmdbuffer.push_back({get_us(), [id, whether]()
             {
                 if(emitters.count(id) != 0)
                 {
@@ -297,7 +299,7 @@ DLLEXPORT TYPE_EC fauxmix_emitter_channel(TYPE_ID id, TYPE_ID channel)
     if(emitterids.Exists(id))
     {
         commandlock.lock();
-            cmdbuffer.push_back({SDL_GetTicks(), [id, channel]()
+            cmdbuffer.push_back({get_us(), [id, channel]()
             {
                 if(emitters.count(id) != 0)
                 {
@@ -316,7 +318,7 @@ DLLEXPORT TYPE_EC fauxmix_emitter_pitch(TYPE_ID id, TYPE_FT ratefactor)
     if(emitterids.Exists(id))
     {
         commandlock.lock();
-            cmdbuffer.push_back({SDL_GetTicks(), [id, ratefactor]()
+            cmdbuffer.push_back({get_us(), [id, ratefactor]()
             {
                 if(emitters.count(id) != 0)
                 {
@@ -335,7 +337,7 @@ DLLEXPORT TYPE_EC fauxmix_emitter_fire(TYPE_ID id)
     if(emitterids.Exists(id))
     {
         commandlock.lock();
-            cmdbuffer.push_back({SDL_GetTicks(), [id]()
+            cmdbuffer.push_back({get_us(), [id]()
             {
                 if(emitters.count(id) != 0)
                 {
@@ -354,7 +356,7 @@ DLLEXPORT TYPE_EC fauxmix_emitter_cease(TYPE_ID id)
     if(emitterids.Exists(id))
     {
         commandlock.lock();
-            cmdbuffer.push_back({SDL_GetTicks(), [id]()
+            cmdbuffer.push_back({get_us(), [id]()
             {
                 if(emitters.count(id) != 0)
                 {
@@ -372,7 +374,7 @@ DLLEXPORT TYPE_VD fauxmix_emitter_kill(TYPE_ID id)
 {
     emitterids.Free(id);
     commandlock.lock();
-        cmdbuffer.push_back({SDL_GetTicks(), [id]()
+        cmdbuffer.push_back({get_us(), [id]()
         {
             if(emitters.count(id) != 0)
             {

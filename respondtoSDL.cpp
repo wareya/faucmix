@@ -7,6 +7,8 @@
 #include "wavstream.hpp"
 #include "global.hpp"
 
+#include "btime.hpp"
+
 #include <vector>
 #include <deque>
 #include <set>
@@ -42,9 +44,9 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
          //   puts("commandsing");
         
         // we need to store the time that we strt mixing so that we can compare it 
-        Uint32 start = SDL_GetTicks(); // this must be inside of the commandlock for thread safety purposes
+        double start = get_us(); // this must be inside of the commandlock for thread safety purposes
         // all commands up to this point should (deterministically speaking) have times from before [start]. So we add a delay to their timestamp which is as long as their expected backwards latency.
-        Uint32 cmddelay = (len/block)*double(1000.0)/fmt.samplerate;
+        int cmddelay = len/block;
     commandlock.unlock();
     
     /* generate samples in between executing commands */
@@ -55,17 +57,19 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
         int subwindow; // length in stream up to next command or end of stream
         if(i < copybuffer.size())
         {
-            if(copybuffer[i].ms > start) // this might happen if the clock changes while running, can never be too safe
+            if(copybuffer[i].us > start) // this might happen if the clock changes while running, can never be too safe
             {
-                copybuffer[i].ms = start;
+                copybuffer[i].us = start;
                 puts("fixed clock!");
             }
-            double offset = copybuffer[i].ms + cmddelay - start;
-            subwindow = offset*fmt.samplerate/1000 - used;
+            double offset = copybuffer[i].us/1000000*fmt.samplerate - start/1000000*fmt.samplerate;
+            subwindow = offset + cmddelay - used;
             subwindow *= block;
             if(used*block + subwindow > len)
+            {
                 subwindow = len - used*block;
-            
+                puts("fixed clock again!");
+            }
         }
         else
             subwindow = len - used*block;

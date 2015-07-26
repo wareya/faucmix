@@ -55,7 +55,7 @@ extern SDL_AudioSpec got;
 
 struct command
 {
-    Uint32 ms;
+    double us;
     std::function<void()> func;
 };
 
