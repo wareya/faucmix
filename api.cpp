@@ -109,7 +109,9 @@ DLLEXPORT TYPE_EC fauxmix_channel(TYPE_ID id, TYPE_FT volume)
  * and it's up to you to kill them if they fail or unload
  */
 #include "wavfile.hpp"
+#ifndef NO_OPUS
 #include "opusfile.hpp"
+#endif
 #include "global.hpp"
 
 #include <string.h>
@@ -120,31 +122,33 @@ DLLEXPORT TYPE_ID fauxmix_sample_load(TYPE_ST filename)
     commandlock.lock();
         cmdbuffer.push_back({SDL_GetTicks(), [i, filename]()
         {
-            auto b = strlen(filename);
-            int a;
-            if(b > 10000) // no
-            {
-                puts("Long filename -- cancelling opus detection!");
-                goto wav; // this has to be controlled for overflow of b - 5
-            }
-            a = b - 5;
-            if(a < 0)
-            {
-                puts("Short filename -- not opus!");
-                goto wav; // this has to be controlled for possible strcmp exploits
-            }
-            if(strncmp(".opus", filename+a, 5) != 0)
-            {
-                puts("No overlap -- not opus!");
-                std::cout << filename+a << "\n";
-                goto wav;
-            }
-            opus:
-            {
-                auto n = opusfile_load(filename);
-                samples.emplace(i, n);
-                return;
-            }
+            #ifndef NO_OPUS
+                auto b = strlen(filename);
+                int a;
+                if(b > 10000) // no
+                {
+                    puts("Long filename -- cancelling opus detection!");
+                    goto wav; // this has to be controlled for overflow of b - 5
+                }
+                a = b - 5;
+                if(a < 0)
+                {
+                    puts("Short filename -- not opus!");
+                    goto wav; // this has to be controlled for possible strcmp exploits
+                }
+                if(strncmp(".opus", filename+a, 5) != 0)
+                {
+                    puts("No overlap -- not opus!");
+                    std::cout << filename+a << "\n";
+                    goto wav;
+                }
+                opus:
+                {
+                    auto n = opusfile_load(filename);
+                    samples.emplace(i, n);
+                    return;
+                }
+            #endif
             wav:
             {
                 auto n = wavfile_load(filename);

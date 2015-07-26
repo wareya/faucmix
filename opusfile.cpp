@@ -1,3 +1,5 @@
+#ifndef NO_OPUS
+
 #include "opusfile.hpp"
 
 #include <opusfile.h>
@@ -92,3 +94,5 @@ int t_opusfile_load(void * etc)
     self->status = 1;
     puts("loaded opus sample");
 }
+
+#endif

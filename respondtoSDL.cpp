@@ -38,12 +38,13 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
             copybuffer.push_back(cmdbuffer[0]);
             cmdbuffer.pop_front();
         }
-        puts("commandsing");
-    
-    // we need to store the time that we strt mixing so that we can compare it 
-    Uint32 start = SDL_GetTicks(); // this must be inside of the commandlock for thread safety purposes
-    // all commands up to this point should (deterministically speaking) have times from before [start]. So we add a delay to their timestamp which is as long as their expected backwards latency.
-    Uint32 cmddelay = float(len)/fmt.samplerate*1000;
+        if(copybuffer.size() > 0)
+            puts("commandsing");
+        
+        // we need to store the time that we strt mixing so that we can compare it 
+        Uint32 start = SDL_GetTicks(); // this must be inside of the commandlock for thread safety purposes
+        // all commands up to this point should (deterministically speaking) have times from before [start]. So we add a delay to their timestamp which is as long as their expected backwards latency.
+        Uint32 cmddelay = float(len)/fmt.samplerate*1000;
     commandlock.unlock();
     
     /* generate samples in between executing commands */
@@ -55,7 +56,7 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
         if(i < copybuffer.size())
             subwindow = copybuffer[i].ms + cmddelay - start;
         else
-            subwindow = len/block - used;
+            subwindow = len - used*block;
         
         /* Get emitter responses */
         for(auto s : emitters)
@@ -71,7 +72,7 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
         /* Mix responses into output stream */
         int maxloops = 100000;
         int prog = 0;
-        while(used*block < len and prog < subwindow and maxloops > 0)
+        while(used*block < len and prog*block < subwindow and maxloops > 0)
         {
             maxloops -= 1;
             if(ducker > 1.0f)

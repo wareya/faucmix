@@ -1,3 +1,5 @@
+#ifndef NO_OPUS
+
 #ifndef INCLUDED_OPUSFLIE
 #define INCLUDED_OPUSFLIE
 
@@ -10,5 +12,7 @@
 wavfile * opusfile_load (const char * filename);
 
 int t_opusfile_load(void * etc);
+
+#endif
 
 #endif
