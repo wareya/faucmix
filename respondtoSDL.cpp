@@ -22,6 +22,8 @@
 std::vector<void *> responses;
 std::vector<mixinfo *> infos;
 
+std::deque<double> timestamps;
+
 void respondtoSDL(void * udata, Uint8 * stream, int len)
 {
     // get the output stream spec in a way that certain faucet mixer functions understand
@@ -40,14 +42,34 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
             copybuffer.push_back(cmdbuffer[0]);
             cmdbuffer.pop_front();
         }
-        //if(copybuffer.size() > 0)
-         //   puts("commandsing");
         
-        // we need to store the time that we strt mixing so that we can compare it 
-        double start = get_us(); // this must be inside of the commandlock for thread safety purposes
-        // all commands up to this point should (deterministically speaking) have times from before [start]. So we add a delay to their timestamp which is as long as their expected backwards latency.
-        int cmddelay = len/block;
+        // the following must be inside of the commandlock for thread safety purposes
+        double thisframe = get_us();
     commandlock.unlock();
+    
+    // this is outside of the commandlock because it can cause dynamic reallocations, but it's logically connected to the get_us line.
+    
+        // we need to store the time that we strt mixing so that we can compare it 
+        /* THE DRIVER THREAD DOES NOT NECESSARILY HAVE RELIABLE FRAME TIMING. WE NEED TO FILTER SEVERAL FRAME TIMINGS TOGETHER IN ORDER TO SYNCHRONIZE WITH MESSAGES. */
+        while(timestamps.size() > 3)
+            timestamps.pop_back();
+        
+        const double frametime = double(len/block)/fmt.samplerate*1000000;
+        
+        timestamps.push_front(thisframe);
+        double start = 0;
+        
+        float divisor = 1;
+        for(auto i = 0; i < timestamps.size(); i++)
+        {
+            start += timestamps[i];
+            start += i*frametime;
+        }
+        start /= timestamps.size();
+        //std::cout << thisframe << " vs " << start << "\n";
+    
+    // all commands up to this point should (deterministically speaking) have times from before [start]. So we add a delay to their timestamp which is as long as their expected backwards latency.
+    int cmddelay = len/block;
     
     /* generate samples in between executing commands */
     
