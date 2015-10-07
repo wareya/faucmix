@@ -4,7 +4,7 @@
 #ifdef _WIN32
 #define DLLEXPORT extern "C" __declspec(dllexport)  __attribute__((visibility("default")))
 #else
-#define DLLEXPORT __attribute__((visibility("default")))
+#define DLLEXPORT extern "C" __attribute__((visibility("default")))
 #endif
 
 #include "format.hpp"
