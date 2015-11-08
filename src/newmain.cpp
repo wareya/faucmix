@@ -24,7 +24,7 @@ int main(int argc, char * argv[])
         sample1 = fauxmix_sample_load(argv[1]);
         emitter1 = fauxmix_emitter_create(sample1);
         //fauxmix_emitter_loop(emitter1, true);
-        fauxmix_emitter_pitch(emitter1, 2.0f);
+        fauxmix_emitter_pitch(emitter1, 1.0f);
         fauxmix_emitter_fire(emitter1);
     }
     else
