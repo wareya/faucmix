@@ -12,7 +12,7 @@ struct wavstream : pcmstream
 {
     wavfile * sample;
     
-    wavstream(wavfile * given); // TODO: SEPARATE INSTANTIATION OF WAVSTREAM FROM WAVFILE
+    wavstream(wavfile * given);
     
     Uint32 position; // Position is in OUTPUT SAMPLES, not SOUNDBYTE SAMPLES, i.e. it counts got.freqs not wavstream.freqs
     Uint8 * buffer = nullptr;

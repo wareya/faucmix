@@ -5,7 +5,7 @@
 
 #include <iostream>
 
-wavstream::wavstream(wavfile * given) // TODO: SEPARATE INSTANTIATION OF WAVSTREAM FROM WAVFILE
+wavstream::wavstream(wavfile * given)
 {
     sample = given;
 }
