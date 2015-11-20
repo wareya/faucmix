@@ -42,6 +42,7 @@ int memwrite(void * tgt, Uint64 value, size_t n, int width)
 
 
 // srcbuffer must be smaller than tgtbuffer in *samples*
+// ONLY CONVERTS TO/FROM MONO.
 int channel_cvt(void * tgtbuffer, void * srcbuffer, Uint32 samples, SDL_AudioSpec * tgtspec, Uint16 srcchannels)
 {
     enum
@@ -115,6 +116,7 @@ int channel_cvt(void * tgtbuffer, void * srcbuffer, Uint32 samples, SDL_AudioSpe
         }
         return UP;
     }
+    // mix down to mono
     if ( tgtchannels == 1 )
     {
         wavformat fmt = audiospec_to_wavformat(tgtspec); // don't need to set/fix channels because get_sample won't use non-sampleformat info

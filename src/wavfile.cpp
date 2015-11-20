@@ -12,6 +12,7 @@ wavfile * wavfile_load (const char * filename)
     return sample;
 }
 
+// TODO: Use return codes somehow. But it runs on a thread. Return to wrapper function that sets flags?
 int t_wavfile_load(void * etc)
 {
     enum returncodes

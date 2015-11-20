@@ -6,6 +6,10 @@
 
 #include <stdio.h>
 #include <iostream>
+
+// Shitty opus loading implementation that might break on malformed files
+// I DID NOT SECURITY TEST THIS, DO NOT FEED UNTRUSTED OPUS FILES INTO THIS
+
 wavfile * opusfile_load (const char * filename)
 {
     puts("loading opus sample");

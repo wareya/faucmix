@@ -7,6 +7,7 @@
 
 #include <SDL2/SDL_audio.h>
 
+// Mixinfo is handled by the mixer, not the emitter
 struct mixinfo
 {
     float vol_l = 1.0f;

@@ -32,6 +32,7 @@ DLLEXPORT TYPE_VD fauxmix_use_float_output(TYPE_BL b)
 SDL_AudioSpec want;
 SDL_AudioSpec got;
 
+// Returns true if device seemed to open correctly
 DLLEXPORT TYPE_BL fauxmix_init(TYPE_NM samplerate, TYPE_BL mono, TYPE_NM samples)
 {
     want.freq = samplerate;
@@ -39,6 +40,7 @@ DLLEXPORT TYPE_BL fauxmix_init(TYPE_NM samplerate, TYPE_BL mono, TYPE_NM samples
         want.format = AUDIO_S16;
     else
         want.format = AUDIO_F32;
+    // We test whether mono is less than 0.5 just in case we're being used from game maker, where that is the "truth" convention
     want.channels = (mono < 0.5)?1:2;
     want.samples = samples;
     want.callback = respondtoSDL;
@@ -82,11 +84,13 @@ DLLEXPORT TYPE_NM fauxmix_get_samples()
         return -1;
 }
 
+// returns whether ducker is doing ducking things (for mastering debugging)
 DLLEXPORT TYPE_BL fauxmix_is_ducking()
 {
     return ducker > 1.0f;
 }
 
+// Make a mixing channel i.e. a group for 
 DLLEXPORT TYPE_EC fauxmix_channel(TYPE_ID id, TYPE_FT volume)
 {
     commandlock.lock();

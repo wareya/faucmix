@@ -2,6 +2,7 @@
 
 #include <SDL2/SDL_audio.h>
 
+// We don't use SDL native formats internally. We have our own format that's like a simplified .wav spec.
 wavformat audiospec_to_wavformat(SDL_AudioSpec * from)
 {
     auto isfloat = SDL_AUDIO_ISFLOAT(from->format);
@@ -19,6 +20,17 @@ wavformat audiospec_to_wavformat(SDL_AudioSpec * from)
     };
 }
 
+// Get a correctly formatted sample from a place in RAM
+// This is like a specialized casting function.
+// There are three general kinds of sample:
+// Unsigned integer (0 == -1.0)
+// Signed integer (0 == 0.0)
+// Floating point (-1.0 ~ 1.0)
+// We support the following kinds:
+// Unsigned int: 8-bit
+// Signed int: 16-bit, 24-bit, 32-bit
+// Float: 32-bit (float), 64-bit (double)  FIXME: 64-bit float is not actually currently handled!
+//  WE ALSO HANDLE SAMPLE-DOMAIN VOLUME IN THIS FUNCTION.
 float get_sample(void * addr, wavformat * fmt)
 {
     float trans;
@@ -29,13 +41,8 @@ float get_sample(void * addr, wavformat * fmt)
     }
     if(fmt->bytespersample == 2)
     {
-        if(fmt->isfloatingpoint)
-            trans = *(float*)addr;
-        else
-        {
-            trans = *(Sint16*)addr;
-            trans /= fmt->datagain;
-        }
+        trans = *(Sint16*)addr;
+        trans /= fmt->datagain;
     }
     if(fmt->bytespersample == 3)
     {
@@ -46,7 +53,7 @@ float get_sample(void * addr, wavformat * fmt)
     if(fmt->bytespersample == 4)
     {
         if(fmt->isfloatingpoint)
-            trans = *(double*)addr;
+            trans = *(float*)addr;
         else
         {
             double trans2 = *((Sint32*)addr);
@@ -56,6 +63,8 @@ float get_sample(void * addr, wavformat * fmt)
     return trans * fmt->volume;
 }
 
+// The inverse of the above function.
+//  WE DO NOT HANDLE SAMPLE-DOMAIN VOLUME IN THIS FUNCTION.
 void set_sample(void * addr, wavformat * fmt, float val)
 {
     if(fmt->bytespersample == 1)
@@ -65,10 +74,7 @@ void set_sample(void * addr, wavformat * fmt, float val)
     }
     if(fmt->bytespersample == 2)
     {
-        if(fmt->isfloatingpoint)
-            *(float*)addr = val;
-        else
-            *(Sint16*)addr = val*fmt->datagain;
+        *(Sint16*)addr = val*fmt->datagain;
         return;
     }
     if(fmt->bytespersample == 3)
@@ -84,7 +90,7 @@ void set_sample(void * addr, wavformat * fmt, float val)
     if(fmt->bytespersample == 4)
     {
         if(fmt->isfloatingpoint)
-            *(double*)addr = val;
+            *(float*)addr = val;
         else
             *(Uint32*)addr = val * fmt->slowdatagain;
         return;

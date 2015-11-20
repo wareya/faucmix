@@ -5,6 +5,10 @@
 #include <string.h>
 #define puts(x) {}
 
+// Below is black magic of integer math resampling.
+// Ye who enters: Please understand DSP.
+// The function is a triangle filter.
+
 // Takes N channels, gives N channels
 int linear_resample_into_buffer
 ( Uint32 position
@@ -72,7 +76,7 @@ int linear_resample_into_buffer
     }
     
     
-    
+    // TODO: Integer hermite possible?
     else if (difference > 0) // upsample, use triangle filter to artificially create SUPER RETRO SOUNDING highs
     {
         puts("over");
@@ -124,6 +128,7 @@ int linear_resample_into_buffer
         puts("under");
         for(unsigned s = 0; s < tgts; s++)
         {
+            // FIXME: I have an automatic casting problem somewhere here that is covered up by the specific types I pick. I think I overflow and then recast. Rewrite?
             puts("s");
             auto srcrate = srcfmt->samplerate;
             auto tgtrate = tgtfmt->samplerate;

@@ -17,6 +17,7 @@
 
 #include "global.hpp"
 
+// We are a game maker compatible library. GM's DLL spec is a subset of C DLL spec. It only uses doubles and char *.
 #ifdef GAME_MAKER
 typedef double TYPE_NM;
 typedef double TYPE_ID;

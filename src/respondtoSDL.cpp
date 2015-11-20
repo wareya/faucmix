@@ -110,6 +110,8 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
                 }
             }
             /* Mix responses into output stream */
+            // If you can't read this loop without comments, *please don't change it.*
+            // It's left uncommented on purpose to keep people who can't read it away.
             long int maxloops = len;
             int prog = 0;
             while(used*block < len and prog*block < subwindow and maxloops > 0)
