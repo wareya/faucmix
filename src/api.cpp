@@ -264,11 +264,19 @@ DLLEXPORT TYPE_EC fauxmix_emitter_volumes(TYPE_ID id, TYPE_FT left, TYPE_FT righ
                 if(emitters.count(id) != 0)
                 {
                     mixinfo* mix = &(emitters[id]->mix);
-                    mix->target_l = left;
-                    mix->target_r = right;
-                    mix->add_l = (mix->target_l - mix->vol_l)/fadewindow;
-                    mix->add_r = (mix->target_r - mix->vol_r)/fadewindow;
-                    mix->remaining = ceil(fadewindow);
+                    if(emitters[id]->info.playing)
+                    {
+                        mix->target_l = left;
+                        mix->target_r = right;
+                        mix->add_l = (mix->target_l - mix->vol_l)/fadewindow;
+                        mix->add_r = (mix->target_r - mix->vol_r)/fadewindow;
+                        mix->remaining = ceil(fadewindow);
+                    }
+                    else
+                    {
+                        mix->vol_l = left;
+                        mix->vol_r = right;
+                    }
                     //std::cout << mix->target_l << " " << mix->vol_l << " " << (mix->target_l - mix->vol_l) << "\n";
                 }
             }});
