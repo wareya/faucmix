@@ -23,11 +23,11 @@
 * 
 * op-hybrid:
 * -handles rw
-* -cmdbuffer write (MUTEX)
+* -buffer write (MUTEX)
 * 
 * op-write:
 * -handles read
-* -cmdbuffer write (MUTEX)
+* -buffer write (MUTEX)
 * 
 * op-read:
 * -handles read
@@ -55,11 +55,9 @@ extern SDL_AudioSpec got;
 
 struct command
 {
-    double us;
     std::function<void()> func;
 };
 
-extern std::mutex commandlock;
 extern std::deque<command> cmdbuffer;
 
 /* shadow */

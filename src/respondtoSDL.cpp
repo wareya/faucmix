@@ -118,23 +118,21 @@ void non_time_critical_update_cleanup()
     cmdbuffer.clear();
     
     /* Build shadow data */
-    shadowlock.lock();
-        emittershadow.clear();
-        sampleshadow.clear();
-        for(auto s : emitters)
-        {
-            auto id = s.first;
-            auto mine = s.second;
-            emittershadow[id].status = mine->info.playing;
-            emittershadow[id].vol1 = mine->mix.vol_l;
-            emittershadow[id].vol2 = mine->mix.vol_r;
-        }
-        for(auto s : samples)
-        {
-            auto id = s.first;
-            auto sample = s.second;
-            sampleshadow[id].status = sample->status;
-            sampleshadow[id].vol = sample->volume;
-        }
-    shadowlock.unlock();
+    emittershadow.clear();
+    sampleshadow.clear();
+    for(auto s : emitters)
+    {
+        auto id = s.first;
+        auto mine = s.second;
+        emittershadow[id].status = mine->info.playing;
+        emittershadow[id].vol1 = mine->mix.vol_l;
+        emittershadow[id].vol2 = mine->mix.vol_r;
+    }
+    for(auto s : samples)
+    {
+        auto id = s.first;
+        auto sample = s.second;
+        sampleshadow[id].status = sample->status; // sample status (reflects loading state) can be written by a background thread but is atomic
+        sampleshadow[id].vol = sample->format.volume;
+    }
 }

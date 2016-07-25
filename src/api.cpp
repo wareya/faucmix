@@ -37,6 +37,8 @@ unsigned char buffer[4096*2*2]; // more than enough samples for everyone
 
 DLLEXPORT TYPE_VD fauxmix_push()
 {
+    if(!device) return;
+    
     // Semi time critical: don't do anything that might make the OS make us wait a couple milliseconds (like deallocation)
     // (We do technically deallocate some stuff here, but it doesn't happen every frame.)
     
@@ -117,15 +119,13 @@ DLLEXPORT TYPE_BL fauxmix_is_ducking()
 // Make a mixing channel i.e. a group for 
 DLLEXPORT TYPE_EC fauxmix_channel(TYPE_ID id, TYPE_FT volume)
 {
-    commandlock.lock();
-        cmdbuffer.push_back({get_us(), [id, volume]()
+    cmdbuffer.push_back({[id, volume]()
+    {
+        if(mixchannels.count(id) == 0 and id > 0)
         {
-            if(mixchannels.count(id) == 0 and id > 0)
-            {
-                mixchannels[id] = (volume > 1.0f ? 1.0f : volume);
-            }
-        }});
-    commandlock.unlock();
+            mixchannels[id] = (volume > 1.0f ? 1.0f : volume);
+        }
+    }});
     return 0;
 }
 
@@ -149,99 +149,91 @@ DLLEXPORT TYPE_ID fauxmix_sample_load(TYPE_ST filename)
 {
     auto i = sampleids.New();
     
-    commandlock.lock();
-        cmdbuffer.push_back({get_us(), [i, filename]()
-        {
-            #ifndef NO_OPUS
-                auto b = strlen(filename);
-                int a;
-                if(b > 10000) // no
-                {
-                    puts("Long filename -- cancelling opus detection!");
-                    goto wav; // this has to be controlled for overflow of b - 5
-                }
-                a = b - 5;
-                if(a < 0)
-                {
-                    puts("Short filename -- not opus!");
-                    goto wav; // this has to be controlled for possible strcmp exploits
-                }
-                if(strncmp(".opus", filename+a, 5) != 0)
-                {
-                    puts("No overlap -- not opus!");
-                    std::cout << filename+a << "\n";
-                    goto wav;
-                }
-                opus:
-                {
-                    auto n = opusfile_load(filename);
-                    samples.emplace(i, n);
-                    return;
-                }
-            #endif
-            wav:
+    cmdbuffer.push_back({[i, filename]()
+    {
+        #ifndef NO_OPUS
+            auto b = strlen(filename);
+            int a;
+            if(b > 10000) // no
             {
-                auto n = wavfile_load(filename);
+                puts("Long filename -- cancelling opus detection!");
+                goto wav; // this has to be controlled for overflow of b - 5
+            }
+            a = b - 5;
+            if(a < 0)
+            {
+                puts("Short filename -- not opus!");
+                goto wav; // this has to be controlled for possible strcmp exploits
+            }
+            if(strncmp(".opus", filename+a, 5) != 0)
+            {
+                puts("No overlap -- not opus!");
+                std::cout << filename+a << "\n";
+                goto wav;
+            }
+            opus:
+            {
+                auto n = opusfile_load(filename);
                 samples.emplace(i, n);
                 return;
             }
-        }});
-    commandlock.unlock();
+        #endif
+        wav:
+        {
+            auto n = wavfile_load(filename);
+            samples.emplace(i, n);
+            return;
+        }
+    }});
     
     return i;
 }
 DLLEXPORT TYPE_EC fauxmix_sample_volume(TYPE_ID sample, TYPE_FT volume)
 {
-    commandlock.lock();
-        if(samples.count(sample) != 0)
+    if(sampleids.Exists(sample))
+    {
+        cmdbuffer.push_back({[sample, volume]()
         {
-            cmdbuffer.push_back({get_us(), [sample, volume]()
-            {
-                auto mine = samples[sample];
-                mine->volume = volume;
-            }});
-            return 0;
-        }
-        else
-            return -1;
-    commandlock.unlock();
+            auto mine = samples[sample];
+            mine->format.volume = volume;
+        }});
+        return 0;
+    }
+    else
+        return -1;
 }
 DLLEXPORT TYPE_VD fauxmix_sample_kill(TYPE_ID sample)
 {
     sampleids.Free(sample);
-    commandlock.lock();
-        cmdbuffer.push_back({get_us(), [sample]()
+    cmdbuffer.push_back({[sample]()
+    {
+        if(samples.count(sample) != 0)
         {
-            if(samples.count(sample) != 0)
+            delete samples[sample];
+            samples.erase(sample);
+        }
+        if(samplestoemitters.count(sample) != 0)
+        {
+            for(auto e : samplestoemitters[sample])
             {
-                delete samples[sample];
-                samples.erase(sample);
-            }
-            if(samplestoemitters.count(sample) != 0)
-            {
-                for(auto e : samplestoemitters[sample])
+                if(emitters.count(e) != 0)
                 {
-                    if(emitters.count(e) != 0)
-                    {
-                        delete emitters[e];
-                        emitters.erase(e);
-                        emitterids.Free(e);
-                    }
+                    delete emitters[e];
+                    emitters.erase(e);
+                    emitterids.Free(e);
                 }
-                samplestoemitters.erase(sample);
             }
-        }});
-    commandlock.unlock();
+            samplestoemitters.erase(sample);
+        }
+    }});
 }
 DLLEXPORT TYPE_EC fauxmix_sample_status(TYPE_ID sample)
 {
     int ret;
-    shadowlock.lock();
-        if(sampleshadow.count(sample) != 0)
-            ret = sampleshadow[sample].status;
-        else
-            ret = -2;
-    shadowlock.unlock();
+    if(sampleshadow.count(sample) != 0)
+        ret = sampleshadow[sample].status;
+    else
+        ret = -2;
     return ret;
 }
 
@@ -250,30 +242,26 @@ DLLEXPORT TYPE_EC fauxmix_sample_status(TYPE_ID sample)
 DLLEXPORT TYPE_ID fauxmix_emitter_create(TYPE_ID sample)
 {
     auto i = emitterids.New();
-    commandlock.lock();
-        cmdbuffer.push_back({get_us(), [i, sample]()
+    cmdbuffer.push_back({[i, sample]()
+    {
+        if(samples.count(sample) != 0)
         {
-            if(samples.count(sample) != 0)
-            {
-                auto s = samples[sample];
-                auto mine = new emitter(s);
-                emitters.emplace(i, mine);
-                samplestoemitters[sample].push_back(i);
-            }
-        }});
-    commandlock.unlock();
+            auto s = samples[sample];
+            auto mine = new emitter(s);
+            emitters.emplace(i, mine);
+            samplestoemitters[sample].push_back(i);
+        }
+    }});
     return i;
 }
  
 DLLEXPORT TYPE_EC fauxmix_emitter_status(TYPE_ID id)
 {
     int ret;
-    shadowlock.lock();
-        if(emittershadow.count(id) != 0)
-            ret = emittershadow[id].status;
-        else
-            ret = -2;
-    shadowlock.unlock();
+    if(emittershadow.count(id) != 0)
+        ret = emittershadow[id].status;
+    else
+        ret = -2;
     return ret;
 }
 
@@ -282,29 +270,27 @@ DLLEXPORT TYPE_EC fauxmix_emitter_volumes(TYPE_ID id, TYPE_FT left, TYPE_FT righ
     float fadewindow = float(got.freq)*0.01f;
     if(emitterids.Exists(id))
     {
-        commandlock.lock();
-            cmdbuffer.push_back({get_us(), [id, left, right, fadewindow]()
+        cmdbuffer.push_back({[id, left, right, fadewindow]()
+        {
+            if(emitters.count(id) != 0)
             {
-                if(emitters.count(id) != 0)
+                mixinfo* mix = &(emitters[id]->mix);
+                if(emitters[id]->info.playing)
                 {
-                    mixinfo* mix = &(emitters[id]->mix);
-                    if(emitters[id]->info.playing)
-                    {
-                        mix->target_l = left;
-                        mix->target_r = right;
-                        mix->add_l = (mix->target_l - mix->vol_l)/fadewindow;
-                        mix->add_r = (mix->target_r - mix->vol_r)/fadewindow;
-                        mix->remaining = ceil(fadewindow);
-                    }
-                    else
-                    {
-                        mix->vol_l = left;
-                        mix->vol_r = right;
-                    }
-                    //std::cout << mix->target_l << " " << mix->vol_l << " " << (mix->target_l - mix->vol_l) << "\n";
+                    mix->target_l = left;
+                    mix->target_r = right;
+                    mix->add_l = (mix->target_l - mix->vol_l)/fadewindow;
+                    mix->add_r = (mix->target_r - mix->vol_r)/fadewindow;
+                    mix->remaining = ceil(fadewindow);
                 }
-            }});
-        commandlock.unlock();
+                else
+                {
+                    mix->vol_l = left;
+                    mix->vol_r = right;
+                }
+                //std::cout << mix->target_l << " " << mix->vol_l << " " << (mix->target_l - mix->vol_l) << "\n";
+            }
+        }});
         return 0;
     }
     else
@@ -315,15 +301,13 @@ DLLEXPORT TYPE_EC fauxmix_emitter_loop(TYPE_ID id, TYPE_BL whether)
 {
     if(emitterids.Exists(id))
     {
-        commandlock.lock();
-            cmdbuffer.push_back({get_us(), [id, whether]()
+        cmdbuffer.push_back({[id, whether]()
+        {
+            if(emitters.count(id) != 0)
             {
-                if(emitters.count(id) != 0)
-                {
-                    emitters[id]->info.loop = whether;
-                }
-            }});
-        commandlock.unlock();
+                emitters[id]->info.loop = whether;
+            }
+        }});
         return 0;
     }
     else
@@ -334,15 +318,13 @@ DLLEXPORT TYPE_EC fauxmix_emitter_channel(TYPE_ID id, TYPE_ID channel)
 {
     if(emitterids.Exists(id))
     {
-        commandlock.lock();
-            cmdbuffer.push_back({get_us(), [id, channel]()
+        cmdbuffer.push_back({[id, channel]()
+        {
+            if(emitters.count(id) != 0)
             {
-                if(emitters.count(id) != 0)
-                {
-                    emitters[id]->mix.channel = channel;
-                }
-            }});
-        commandlock.unlock();
+                emitters[id]->mix.channel = channel;
+            }
+        }});
         return 0;
     }
     else
@@ -353,15 +335,13 @@ DLLEXPORT TYPE_EC fauxmix_emitter_pitch(TYPE_ID id, TYPE_FT ratefactor)
 {
     if(emitterids.Exists(id))
     {
-        commandlock.lock();
-            cmdbuffer.push_back({get_us(), [id, ratefactor]()
+        cmdbuffer.push_back({[id, ratefactor]()
+        {
+            if(emitters.count(id) != 0)
             {
-                if(emitters.count(id) != 0)
-                {
-                    emitters[id]->info.ratefactor = ratefactor;
-                }
-            }});
-        commandlock.unlock();
+                emitters[id]->info.ratefactor = ratefactor;
+            }
+        }});
         return 0;
     }
     else
@@ -372,16 +352,14 @@ DLLEXPORT TYPE_EC fauxmix_emitter_fire(TYPE_ID id)
 {
     if(emitterids.Exists(id))
     {
-        commandlock.lock();
-            cmdbuffer.push_back({get_us(), [id]()
+        cmdbuffer.push_back({[id]()
+        {
+            if(emitters.count(id) != 0)
             {
-                if(emitters.count(id) != 0)
-                {
-                    auto mine = emitters[id];
-                    mine->fire();
-                }
-            }});
-        commandlock.unlock();
+                auto mine = emitters[id];
+                mine->fire();
+            }
+        }});
         return 0;
     }
     else
@@ -391,16 +369,14 @@ DLLEXPORT TYPE_EC fauxmix_emitter_cease(TYPE_ID id)
 {
     if(emitterids.Exists(id))
     {
-        commandlock.lock();
-            cmdbuffer.push_back({get_us(), [id]()
+        cmdbuffer.push_back({[id]()
+        {
+            if(emitters.count(id) != 0)
             {
-                if(emitters.count(id) != 0)
-                {
-                    auto mine = emitters[id];
-                    mine->cease();
-                }
-            }});
-        commandlock.unlock();
+                auto mine = emitters[id];
+                mine->cease();
+            }
+        }});
         return 0;
     }
     else
@@ -409,15 +385,13 @@ DLLEXPORT TYPE_EC fauxmix_emitter_cease(TYPE_ID id)
 DLLEXPORT TYPE_VD fauxmix_emitter_kill(TYPE_ID id)
 {
     emitterids.Free(id);
-    commandlock.lock();
-        cmdbuffer.push_back({get_us(), [id]()
+    cmdbuffer.push_back({[id]()
+    {
+        if(emitters.count(id) != 0)
         {
-            if(emitters.count(id) != 0)
-            {
-                delete emitters[id];
-                emitters.erase(id);
-                emitterids.Free(id);
-            }
-        }});
-    commandlock.unlock();
+            delete emitters[id];
+            emitters.erase(id);
+            emitterids.Free(id);
+        }
+    }});
 }

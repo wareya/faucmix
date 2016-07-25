@@ -8,6 +8,7 @@ wavfile * wavfile_load (const char * filename)
     auto sample = new wavfile;
     sample->status = 0;
     sample->stored = std::string(filename);
+    sample->format.volume = 1.0f;
     SDL_CreateThread(&t_wavfile_load, "wavfile_load:t_wavfile_load", sample);
     return sample;
 }
@@ -257,8 +258,6 @@ int t_wavfile_load(void * etc)
     self->format.datagain = datagain;
     self->format.slowdatagain = slowdatagain;
     self->format.blocksize = blocksize;
-    self->format.volume = 1.0f;
-    
     
     /* normalize float */
     Uint32 length = datalen/blocksize;

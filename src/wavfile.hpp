@@ -15,8 +15,6 @@ struct wavfile
     Uint32 samples;
     Uint32 bytes;
     
-    float volume = 1.0f;
-    
     std::string stored;
     wavformat format;
 };
