@@ -39,77 +39,76 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
     for(auto command : cmdbuffer)
         command.func();
     
-    // temporary indentation to make the first diff pretty
-            /* Get emitter responses */
-            for(auto s : emitters)
+    /* Get emitter responses */
+    for(auto s : emitters)
+    {
+        auto stream = s.second;
+        auto f = stream->generateframe(&spec, len);
+        if(f != nullptr)
+        {
+            responses.push_back(f);
+            infos.push_back(&stream->mix);
+        }
+    }
+    /* Mix responses into output stream */
+    // If you can't read this loop without comments, *please don't change it.*
+    // It's left uncommented on purpose to keep people who can't read it away.
+    long int maxloops = len;
+    long int used = 0;
+    while(used*block < len and maxloops > 0)
+    {
+        maxloops -= 1;
+        if(ducker > 1.0f)
+        {
+            ducker -= 1.0f/fmt.samplerate;
+            if(ducker < 1.0f)
+                ducker = 1.0f;
+        }
+        if(ducker < 1.0f) // failsafe
+            ducker = 1.0f;
+        
+        std::vector<float> transient(channels);
+        for(auto c = 0; c < channels; c++)
+        {
+            transient[c] = 0.0f;
+            for(auto i = 0; i < responses.size(); i++)
             {
-                auto stream = s.second;
-                auto f = stream->generateframe(&spec, len);
-                if(f != nullptr)
-                {
-                    responses.push_back(f);
-                    infos.push_back(&stream->mix);
-                }
-            }
-            /* Mix responses into output stream */
-            // If you can't read this loop without comments, *please don't change it.*
-            // It's left uncommented on purpose to keep people who can't read it away.
-            long int maxloops = len;
-            long int used = 0;
-            while(used*block < len and maxloops > 0)
-            {
-                maxloops -= 1;
-                if(ducker > 1.0f)
-                {
-                    ducker -= 1.0f/fmt.samplerate;
-                    if(ducker < 1.0f)
-                        ducker = 1.0f;
-                }
-                if(ducker < 1.0f) // failsafe
-                    ducker = 1.0f;
+                auto response = responses[i];
+                auto& info = infos[i];
                 
-                std::vector<float> transient(channels);
-                for(auto c = 0; c < channels; c++)
+                float realvol;
+                if (channels == 2)
+                    realvol = ((c == 0)?info->vol_l:info->vol_r);
+                else
+                    realvol = (info->vol_l + info->vol_r)/2;
+                if(mixchannels.count(info->channel))
+                    realvol *= mixchannels[info->channel];
+                
+                transient[c] += get_sample((Uint8*)response+(used*channels+c)*sample, &fmt) * realvol;
+                
+                if(c+1 == channels and info->remaining > 0)
                 {
-                    transient[c] = 0.0f;
-                    for(auto i = 0; i < responses.size(); i++)
+                    info->vol_l += info->add_l;
+                    info->vol_r += info->add_r;
+                    info->remaining -= 1;
+                    if(info->remaining == 0)
                     {
-                        auto response = responses[i];
-                        auto& info = infos[i];
-                        
-                        float realvol;
-                        if (channels == 2)
-                            realvol = ((c == 0)?info->vol_l:info->vol_r);
-                        else
-                            realvol = (info->vol_l + info->vol_r)/2;
-                        if(mixchannels.count(info->channel))
-                            realvol *= mixchannels[info->channel];
-                        
-                        transient[c] += get_sample((Uint8*)response+(used*channels+c)*sample, &fmt) * realvol;
-                        
-                        if(c+1 == channels and info->remaining > 0)
-                        {
-                            info->vol_l += info->add_l;
-                            info->vol_r += info->add_r;
-                            info->remaining -= 1;
-                            if(info->remaining == 0)
-                            {
-                                info->vol_l = info->target_l;
-                                info->vol_r = info->target_r;
-                            }
-                        }
-                    }
-                    if(fabsf(transient[c]) > ducker)
-                    {
-                        ducker = fabsf(transient[c])*1.1f; // making the brickwall ducker overduck results in higher ducker quality???? WTF
-                        puts("Ducking!");
+                        info->vol_l = info->target_l;
+                        info->vol_r = info->target_r;
                     }
                 }
-                for(auto c = 0; c < spec.channels; c++)
-                    set_sample(stream+(used*channels+c)*sample, &fmt, transient[c]/ducker);
-                
-                used += 1;
             }
+            if(fabsf(transient[c]) > ducker)
+            {
+                ducker = fabsf(transient[c])*1.1f; // making the brickwall ducker overduck results in higher ducker quality???? WTF
+                puts("Ducking!");
+            }
+        }
+        for(auto c = 0; c < spec.channels; c++)
+            set_sample(stream+(used*channels+c)*sample, &fmt, transient[c]/ducker);
+        
+        used += 1;
+    }
 }
 
 void non_time_critical_update_cleanup()
