@@ -40,7 +40,9 @@ DLLEXPORT TYPE_VD fauxmix_dll_init();
 
 DLLEXPORT TYPE_VD fauxmix_use_float_output(TYPE_BL b);
 
+DLLEXPORT TYPE_VD fauxmix_push();
 DLLEXPORT TYPE_BL fauxmix_init(TYPE_NM samplerate, TYPE_BL mono, TYPE_NM samples);
+DLLEXPORT TYPE_VD fauxmix_close();
 DLLEXPORT TYPE_NM fauxmix_get_samplerate();
 DLLEXPORT TYPE_NM fauxmix_get_channels();
 DLLEXPORT TYPE_NM fauxmix_get_samples();

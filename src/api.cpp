@@ -31,7 +31,31 @@ DLLEXPORT TYPE_VD fauxmix_use_float_output(TYPE_BL b)
 
 SDL_AudioSpec want;
 SDL_AudioSpec got;
+SDL_AudioDeviceID device = 0;
 
+unsigned char buffer[4096*2*2]; // more than enough samples for everyone
+
+DLLEXPORT TYPE_VD fauxmix_push()
+{
+    // Semi time critical: don't do anything that might make the OS make us wait a couple milliseconds (like deallocation)
+    // (We do technically deallocate some stuff here, but it doesn't happen every frame.)
+    
+    auto bytes = got.size - SDL_GetQueuedAudioSize(device);
+    if(bytes <= 0) return; // More buffered than the driver buffers
+    if(bytes > 4096*2*2) bytes = 4096*2*2;
+    
+    respondtoSDL(&got, buffer, bytes);
+    SDL_QueueAudio(device, buffer, bytes);
+    
+    // non-time-critical, deallocate things
+    
+    non_time_critical_update_cleanup();
+}
+DLLEXPORT TYPE_VD fauxmix_close()
+{
+    SDL_CloseAudioDevice(device);
+    device = 0;
+}
 // Returns true if device seemed to open correctly
 DLLEXPORT TYPE_BL fauxmix_init(TYPE_NM samplerate, TYPE_BL mono, TYPE_NM samples)
 {
@@ -43,16 +67,16 @@ DLLEXPORT TYPE_BL fauxmix_init(TYPE_NM samplerate, TYPE_BL mono, TYPE_NM samples
     // We test whether mono is less than 0.5 just in case we're being used from game maker, where that is the "truth" convention
     want.channels = (mono < 0.5)?1:2;
     want.samples = samples;
-    want.callback = respondtoSDL;
+    //want.callback = respondtoSDL;
     want.userdata = &got;
-    auto r = SDL_OpenAudio(&want, &got);
-    if(r < 0)
+    device = SDL_OpenAudioDevice(NULL, 0, &want, &got, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
+    if(device == 0)
     {
         puts("Failed to open device");
         std::cout << SDL_GetError();
         return false;
     }
-    SDL_PauseAudio(0);
+    SDL_PauseAudioDevice(device, 0);
     
     initiated = true;
     printf("%d\n", got.freq);
@@ -96,7 +120,7 @@ DLLEXPORT TYPE_EC fauxmix_channel(TYPE_ID id, TYPE_FT volume)
     commandlock.lock();
         cmdbuffer.push_back({get_us(), [id, volume]()
         {
-            if(mixchannels.count(id) == 0 and id >= 0)
+            if(mixchannels.count(id) == 0 and id > 0)
             {
                 mixchannels[id] = (volume > 1.0f ? 1.0f : volume);
             }
