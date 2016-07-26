@@ -33,7 +33,7 @@ SDL_AudioSpec want;
 SDL_AudioSpec got;
 SDL_AudioDeviceID device = 0;
 
-unsigned char buffer[4096*2*2]; // more than enough samples for everyone
+unsigned char buffer[4096*256]; // more than enough samples for everyone
 
 DLLEXPORT TYPE_VD fauxmix_push()
 {
@@ -44,7 +44,7 @@ DLLEXPORT TYPE_VD fauxmix_push()
     
     auto bytes = got.size - SDL_GetQueuedAudioSize(device);
     if(bytes <= 0) return; // More buffered than the driver buffers
-    if(bytes > 4096*2*2) bytes = 4096*2*2;
+    if(bytes > 4096*256) bytes = 4096*256;
     
     respondtoSDL(&got, buffer, bytes);
     SDL_QueueAudio(device, buffer, bytes);
