@@ -68,7 +68,7 @@ DLLEXPORT TYPE_BL fauxmix_init(TYPE_NM samplerate, TYPE_BL mono, TYPE_NM samples
         want.format = AUDIO_F32;
     // We test whether mono is less than 0.5 just in case we're being used from game maker, where that is the "truth" convention
     want.channels = (mono < 0.5)?1:2;
-    want.samples = samples;
+    want.samples = roundf(powf(2,roundf(log2f(samples))));
     //want.callback = respondtoSDL;
     want.userdata = &got;
     device = SDL_OpenAudioDevice(NULL, 0, &want, &got, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
