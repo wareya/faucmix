@@ -1,4 +1,5 @@
 # faucmix
+
 A lightweight stereo positional audio library meant for indie games. Compatible
 with C and Game Maker 8 (GMS not tested).
 
@@ -6,15 +7,14 @@ Unlike most permissively-licensed games audio libraries, you can update each
 audio source independently, even if they share the same audio clip.
 
 # License
+
 You can use faucmix under the terms of either the ISC license or the zlib license.
 
 # Interface Outline
 
 fauxmix uses a push method for commands in order to avoid certain timing-related
-problems. This means there's certain functions that you need to call every
+problems. This means there's a certain function that you need to call every
 single frame, even if nothing interesting is happening (no new events).
-
-If the time between these two functions dramatically spikes, sound hitches may occur.
 
 Most "event" functions schedule an update. If you try to read info about the
 state that they're modifying, it actually reads from a shadow copy that was
@@ -32,7 +32,7 @@ updated the last time that event was run.
     // Opens the audio device and initializes other internal state. Can fail.
     // - samplerate: Ask SDL for a device with this samplerate. Almost never affects the driver samplerate.
     // - mono: If try, asks SDL for a monaural audio device. Asks for stereo otherwise.
-    // - samples: Ask SDL to open a device that reads this many samples at once when it takes updates. Lower numbers = lower latency. A value between 512 and 2048 is recommended.
+    // - samples: Ask SDL to open a device that reads this many samples at once when it takes updates. Lower numbers = lower latency. 512, 1024, and 2048 are recommended.
     // Returns false on failure.
     
     void fauxmix_close();
@@ -40,11 +40,8 @@ updated the last time that event was run.
 
 ## What you do every frame:
 
-    void fauxmix_startframe();
-    // Tell mixer faucet that you're about to start doing game logic and might send commands, so it shouldn't be messing with the command queue.
-    
     void fauxmix_push();
-    // Tell mixer faucet that you're done sending commands, and it's time for it to read your commands.
+    // Commits commands to the mixing thread.
 
 ## Loading new sounds:
     
