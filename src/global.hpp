@@ -58,6 +58,8 @@ struct command
     std::function<void()> func;
 };
 
+extern std::mutex commandlock;
+extern std::timed_mutex new_commands_message;
 extern std::deque<command> cmdbuffer;
 
 /* shadow */

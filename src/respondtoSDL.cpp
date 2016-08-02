@@ -34,11 +34,6 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
     auto sample = fmt.bytespersample;
     int channels = spec.channels;
     
-    // Run commands now -- some of this stuff is slightly intensive, so it's
-    // deferred until here. This is good for game logic performance. 
-    for(auto command : cmdbuffer)
-        command.func();
-    
     /* Get emitter responses */
     for(auto s : emitters)
     {

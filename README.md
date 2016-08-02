@@ -10,9 +10,11 @@ You can use faucmix under the terms of either the ISC license or the zlib licens
 
 # Interface Outline
 
-fauxmix uses a push method for audio in order to avoid certain timing-related
-problems. This means there's a certain function that you need to call every
+fauxmix uses a push method for commands in order to avoid certain timing-related
+problems. This means there's certain functions that you need to call every
 single frame, even if nothing interesting is happening (no new events).
+
+If the time between these two functions dramatically spikes, sound hitches may occur.
 
 Most "event" functions schedule an update. If you try to read info about the
 state that they're modifying, it actually reads from a shadow copy that was
@@ -34,12 +36,15 @@ updated the last time that event was run.
     // Returns false on failure.
     
     void fauxmix_close();
-    // Closes the SDL audio device. Does not shut down streams; if the audio device is reinitialized, they might continue where they left off.
+    // Closes the SDL audio device. Does not necessarily shut down streams; if the audio device is reinitialized, they might continue where they left off.
 
 ## What you do every frame:
 
+    void fauxmix_startframe();
+    // Tell mixer faucet that you're about to start doing game logic and might send commands, so it shouldn't be messing with the command queue.
+    
     void fauxmix_push();
-    // Give the audio driver however much audio it wants, based on the emitters active.
+    // Tell mixer faucet that you're done sending commands, and it's time for it to read your commands.
 
 ## Loading new sounds:
     
@@ -59,7 +64,7 @@ updated the last time that event was run.
     // 0 - not playing
     // 1 - playing
 
-## Controlling sounds:
+## Controlling sounds (commands):
 
     errorcode fauxmix_sample_volume(id sample, float volume);
     // Sets the volume of this sample for all emitters that use this sample.
@@ -74,7 +79,7 @@ updated the last time that event was run.
     errorcode fauxmix_emitter_cease(id emitter);
     // Ungracefully stops the playback of an emitter.
 
-## Killing unneeded sounds:
+## Killing unneeded sounds (commands):
     void fauxmix_sample_kill(id sample);
     void fauxmix_emitter_kill(id emitter);
 
@@ -87,6 +92,6 @@ updated the last time that event was run.
     number fauxmix_get_samples();
     // Get the number of samples per bite that the SDL device really opened with.
     
-    boolean fauxmix_is_ducking();
+    boolean fauxmix_is_ducking(); // Shadowed!
     // Check whether the mixer is currently ducking (low-distortion amplitude limiter).
 

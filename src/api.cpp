@@ -10,8 +10,10 @@
 #include <SDL2/SDL_audio.h>
 
 #include <iostream>
-#include <math.h>
 #include <algorithm>
+#include <atomic>
+
+#include <math.h>
 
 #include "global.hpp"
 bool isfloat;
@@ -31,39 +33,72 @@ DLLEXPORT TYPE_VD fauxmix_use_float_output(TYPE_BL b)
 
 SDL_AudioSpec want;
 SDL_AudioSpec got;
-SDL_AudioDeviceID device = 0;
+volatile SDL_AudioDeviceID device = 0;
 
 unsigned char buffer[4096*256]; // more than enough samples for everyone
 
-SDL_sem * push;
-
+std::atomic<SDL_Thread *> mixer_thread;
 int pseudo_callback(void * data)
 {
-    
+    while(device)
+    {
+        // sdl why are you so bad at the one job you had
+        int32_t bytes = 0;
+        while(bytes <= 0)
+        {
+            if(!device)
+                goto out;
+            bytes = got.size - SDL_GetQueuedAudioSize(device);
+            if(bytes <= 0)
+                SDL_Delay(1);
+        }
+        
+        //puts(" -- locking on command buffer");
+        commandlock.lock();
+        
+        for(auto command : cmdbuffer)
+            command.func();
+        
+        if(bytes > 4096*256) bytes = 4096*256;
+        respondtoSDL(&got, buffer, bytes);
+        SDL_QueueAudio(device, buffer, bytes);
+        
+        non_time_critical_update_cleanup();
+        
+        commandlock.unlock();
+    }
+    out:
+    mixer_thread = nullptr;
 }
 
+DLLEXPORT TYPE_VD fauxmix_startframe()
+{
+    commandlock.lock();
+}
+// ... game logic goes between calls ...
 DLLEXPORT TYPE_VD fauxmix_push()
 {
-    if(!device) return;
-    
-    // Semi time critical: don't do anything that might make the OS make us wait a couple milliseconds (like deallocation)
-    // (We do technically deallocate some stuff here, but it doesn't happen every frame.)
-    
-    auto bytes = got.size - SDL_GetQueuedAudioSize(device);
-    if(bytes <= 0) return; // More buffered than the driver buffers
-    if(bytes > 4096*256) bytes = 4096*256;
-    
-    respondtoSDL(&got, buffer, bytes);
-    SDL_QueueAudio(device, buffer, bytes);
-    
-    // non-time-critical, deallocate things
-    
-    non_time_critical_update_cleanup();
+    commandlock.unlock();
+    if(device and !mixer_thread)
+    {
+        mixer_thread = SDL_CreateThread(pseudo_callback, "Mixer Faucet", nullptr);
+        if(!mixer_thread)
+        {
+            puts("Somehow failed to make audio mixing thread. Check your operating environment for corruption. Shutting down mixer faucet.");
+            fauxmix_close();
+            return;
+        }
+    }
 }
 DLLEXPORT TYPE_VD fauxmix_close()
 {
-    SDL_CloseAudioDevice(device);
+    if(mixer_thread) SDL_WaitThread(mixer_thread, nullptr);
+    mixer_thread = nullptr;
+    
+    if(device) SDL_CloseAudioDevice(device);
     device = 0;
+    
+    initiated = false;
 }
 // Returns true if device seemed to open correctly
 DLLEXPORT TYPE_BL fauxmix_init(TYPE_NM samplerate, TYPE_BL mono, TYPE_NM samples)
@@ -76,18 +111,21 @@ DLLEXPORT TYPE_BL fauxmix_init(TYPE_NM samplerate, TYPE_BL mono, TYPE_NM samples
     // We test whether mono is less than 0.5 just in case we're being used from game maker, where that is the "truth" convention
     want.channels = (mono < 0.5)?1:2;
     want.samples = roundf(powf(2,roundf(log2f(samples))));
-    //want.callback = respondtoSDL;
+    want.callback = 0;
     want.userdata = &got;
     device = SDL_OpenAudioDevice(NULL, 0, &want, &got, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
+    
     if(device == 0)
     {
         puts("Failed to open device");
         std::cout << SDL_GetError();
         return false;
     }
+    
     SDL_PauseAudioDevice(device, 0);
     
     initiated = true;
+    puts("Mixer faucet opened SDL audio device:");
     printf("%d\n", got.freq);
     printf("%d\n", got.samples);
     
@@ -261,7 +299,6 @@ DLLEXPORT TYPE_EC fauxmix_emitter_volumes(TYPE_ID id, TYPE_FT left, TYPE_FT righ
                     mix->vol_l = left;
                     mix->vol_r = right;
                 }
-                //std::cout << mix->target_l << " " << mix->vol_l << " " << (mix->target_l - mix->vol_l) << "\n";
             }
         }});
         return 0;
