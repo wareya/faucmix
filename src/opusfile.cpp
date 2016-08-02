@@ -16,6 +16,7 @@ wavfile * opusfile_load (const char * filename)
     auto sample = new wavfile;
     sample->status = 0;
     sample->stored = std::string(filename);
+    sample->format.volume = 1.0f;
     SDL_CreateThread(&t_opusfile_load, "faucetmix2:t_opusfile_load", sample);
     return sample;
 }
@@ -71,7 +72,6 @@ int t_opusfile_load(void * etc)
     self->format.datagain = 0x8000;
     self->format.slowdatagain = 0;
     self->format.blocksize = 4;
-    self->format.volume = 1.0f;
     
     unsigned char * fmt = (unsigned char*)malloc(16);
     fmt[ 0] = 0x01;;

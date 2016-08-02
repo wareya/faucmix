@@ -69,9 +69,6 @@ int pseudo_callback(void * data)
     mixer_thread = nullptr;
 }
 
-DLLEXPORT TYPE_VD fauxmix_startframe()
-{
-}
 // ... game logic goes between calls ...
 DLLEXPORT TYPE_VD fauxmix_push()
 {
