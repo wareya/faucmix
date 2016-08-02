@@ -59,8 +59,8 @@ struct command
 };
 
 extern std::mutex commandlock;
-extern std::timed_mutex new_commands_message;
 extern std::deque<command> cmdbuffer;
+extern std::deque<command> copybuffer;
 
 /* shadow */
 

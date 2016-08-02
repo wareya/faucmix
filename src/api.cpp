@@ -53,19 +53,17 @@ int pseudo_callback(void * data)
                 SDL_Delay(1);
         }
         
-        //puts(" -- locking on command buffer");
         commandlock.lock();
-        
-        for(auto command : cmdbuffer)
+        for(auto command : copybuffer)
             command.func();
+        copybuffer.clear();
+        commandlock.unlock();
         
         if(bytes > 4096*256) bytes = 4096*256;
         respondtoSDL(&got, buffer, bytes);
         SDL_QueueAudio(device, buffer, bytes);
         
         non_time_critical_update_cleanup();
-        
-        commandlock.unlock();
     }
     out:
     mixer_thread = nullptr;
@@ -73,28 +71,17 @@ int pseudo_callback(void * data)
 
 DLLEXPORT TYPE_VD fauxmix_startframe()
 {
-    commandlock.lock();
 }
 // ... game logic goes between calls ...
 DLLEXPORT TYPE_VD fauxmix_push()
 {
+    commandlock.lock();
+    copybuffer.insert(copybuffer.end(), cmdbuffer.begin(), cmdbuffer.end());
+    cmdbuffer.clear();
     commandlock.unlock();
-    if(device and !mixer_thread)
-    {
-        mixer_thread = SDL_CreateThread(pseudo_callback, "Mixer Faucet", nullptr);
-        if(!mixer_thread)
-        {
-            puts("Somehow failed to make audio mixing thread. Check your operating environment for corruption. Shutting down mixer faucet.");
-            fauxmix_close();
-            return;
-        }
-    }
 }
 DLLEXPORT TYPE_VD fauxmix_close()
 {
-    if(mixer_thread) SDL_WaitThread(mixer_thread, nullptr);
-    mixer_thread = nullptr;
-    
     if(device) SDL_CloseAudioDevice(device);
     device = 0;
     
@@ -119,6 +106,16 @@ DLLEXPORT TYPE_BL fauxmix_init(TYPE_NM samplerate, TYPE_BL mono, TYPE_NM samples
     {
         puts("Failed to open device");
         std::cout << SDL_GetError();
+        return false;
+    }
+    
+    if(mixer_thread) SDL_WaitThread(mixer_thread, nullptr);
+    mixer_thread = SDL_CreateThread(pseudo_callback, "Mixer Faucet", nullptr);
+    if(!mixer_thread)
+    {
+        puts("Somehow failed to make audio mixing thread. Check your operating environment for corruption. Shutting down mixer faucet.");
+        SDL_CloseAudioDevice(device);
+        device = 0;
         return false;
     }
     

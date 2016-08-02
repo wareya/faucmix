@@ -4,6 +4,7 @@
 
 std::mutex commandlock;
 std::deque<command> cmdbuffer;
+std::deque<command> copybuffer;
 
 /* shadow */
 

@@ -110,7 +110,6 @@ void non_time_critical_update_cleanup()
 {
     responses.clear();
     infos.clear();
-    cmdbuffer.clear();
     
     /* Build shadow data */
     emittershadow.clear();
