@@ -221,17 +221,6 @@ DLLEXPORT TYPE_VD fauxmix_sample_kill(TYPE_ID sample)
         }
     }});
 }
-DLLEXPORT TYPE_EC fauxmix_sample_status(TYPE_ID sample)
-{
-    int ret;
-    if(sampleshadow.count(sample) != 0)
-        ret = sampleshadow[sample].status;
-    else
-        ret = -2;
-    return ret;
-}
-
-
 
 DLLEXPORT TYPE_ID fauxmix_emitter_create(TYPE_ID sample)
 {
@@ -247,16 +236,6 @@ DLLEXPORT TYPE_ID fauxmix_emitter_create(TYPE_ID sample)
         }
     }});
     return i;
-}
- 
-DLLEXPORT TYPE_EC fauxmix_emitter_status(TYPE_ID id)
-{
-    int ret;
-    if(emittershadow.count(id) != 0)
-        ret = emittershadow[id].status;
-    else
-        ret = -2;
-    return ret;
 }
 
 DLLEXPORT TYPE_EC fauxmix_emitter_volumes(TYPE_ID id, TYPE_FT left, TYPE_FT right)
@@ -388,4 +367,24 @@ DLLEXPORT TYPE_VD fauxmix_emitter_kill(TYPE_ID id)
             emitterids.Free(id);
         }
     }});
+}
+
+DLLEXPORT TYPE_EC fauxmix_sample_status(TYPE_ID sample)
+{
+    int ret;
+    if(sampleshadow.count(sample) != 0)
+        ret = sampleshadow[sample].status;
+    else
+        ret = -2;
+    return ret;
+}
+
+DLLEXPORT TYPE_EC fauxmix_emitter_status(TYPE_ID id)
+{
+    int ret;
+    if(emittershadow.count(id) != 0)
+        ret = emittershadow[id].status;
+    else
+        ret = -2;
+    return ret;
 }

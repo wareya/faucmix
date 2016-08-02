@@ -35,7 +35,7 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
     int channels = spec.channels;
     
     // Run commands now -- some of this stuff is slightly intensive, so it's
-    // deferred until here. This is good for game logic tick tims. 
+    // deferred until here. This is good for game logic performance. 
     for(auto command : cmdbuffer)
         command.func();
     

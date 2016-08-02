@@ -59,18 +59,19 @@ DLLEXPORT TYPE_BL fauxmix_is_ducking();
  */
 #include "wavfile.hpp"
 DLLEXPORT TYPE_ID fauxmix_sample_load(TYPE_ST filename);
-DLLEXPORT TYPE_EC fauxmix_sample_status(TYPE_ID sample);
 DLLEXPORT TYPE_EC fauxmix_sample_volume(TYPE_ID sample, TYPE_FT volume);
 DLLEXPORT TYPE_VD fauxmix_sample_kill(TYPE_ID sample);
 
 #include "emitter.hpp"
 DLLEXPORT TYPE_ID fauxmix_emitter_create(TYPE_ID sample);
-DLLEXPORT TYPE_EC fauxmix_emitter_status(TYPE_ID mine);
 DLLEXPORT TYPE_EC fauxmix_emitter_volumes(TYPE_ID mine, TYPE_FT left, TYPE_FT right);
 DLLEXPORT TYPE_EC fauxmix_emitter_loop(TYPE_ID mine, TYPE_BL whether);
 DLLEXPORT TYPE_EC fauxmix_emitter_pitch(TYPE_ID mine, TYPE_FT ratefactor);
 DLLEXPORT TYPE_EC fauxmix_emitter_fire(TYPE_ID mine);
 DLLEXPORT TYPE_EC fauxmix_emitter_cease(TYPE_ID mine);
 DLLEXPORT TYPE_VD fauxmix_emitter_kill(TYPE_ID mine);
+
+DLLEXPORT TYPE_EC fauxmix_sample_status(TYPE_ID sample);
+DLLEXPORT TYPE_EC fauxmix_emitter_status(TYPE_ID mine);
 
 #endif

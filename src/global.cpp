@@ -24,4 +24,4 @@ std::map<Uint32, emitter *> emitters;
 GenericAllocator<Uint32> sampleids;
 std::map<Uint32, wavfile *> samples;
 std::map<Uint32, std::vector<Uint32>> samplestoemitters;
-std::map<Uint32, float> mixchannels;
+std::map<Uint32, float> mixchannels; // unimplemented
