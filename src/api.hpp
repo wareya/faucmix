@@ -48,8 +48,6 @@ DLLEXPORT TYPE_NM fauxmix_get_channels();
 DLLEXPORT TYPE_NM fauxmix_get_samples();
 DLLEXPORT TYPE_BL fauxmix_is_ducking();
 
-DLLEXPORT TYPE_EC fauxmix_channel(TYPE_ID id, TYPE_FT volume);
-
 /*
  * Samples have to be loaded on a thread or else client game logic would cause synchronous disk IO
  * However, this means that the "load sample" command can't give a definitive response on the validity of a sample file

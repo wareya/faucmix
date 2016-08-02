@@ -35,6 +35,13 @@ SDL_AudioDeviceID device = 0;
 
 unsigned char buffer[4096*256]; // more than enough samples for everyone
 
+SDL_sem * push;
+
+int pseudo_callback(void * data)
+{
+    
+}
+
 DLLEXPORT TYPE_VD fauxmix_push()
 {
     if(!device) return;
@@ -114,19 +121,6 @@ DLLEXPORT TYPE_NM fauxmix_get_samples()
 DLLEXPORT TYPE_BL fauxmix_is_ducking()
 {
     return ducker > 1.0f;
-}
-
-// Make a mixing channel i.e. a group for 
-DLLEXPORT TYPE_EC fauxmix_channel(TYPE_ID id, TYPE_FT volume)
-{
-    cmdbuffer.push_back({[id, volume]()
-    {
-        if(mixchannels.count(id) == 0 and id > 0)
-        {
-            mixchannels[id] = (volume > 1.0f ? 1.0f : volume);
-        }
-    }});
-    return 0;
 }
 
 /*
