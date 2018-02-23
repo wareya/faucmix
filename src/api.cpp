@@ -24,6 +24,7 @@ DLLEXPORT TYPE_VD fauxmix_dll_init()
     volume = 1.0f;
     ducker = 1.0f;
     isfloat = false;
+    SDL_Init(SDL_INIT_AUDIO);
 }
 
 DLLEXPORT TYPE_VD fauxmix_use_float_output(TYPE_BL b)
@@ -59,6 +60,8 @@ int pseudo_callback(void * data)
         copybuffer.clear();
         commandlock.unlock();
         
+        if(bytes < got.size)
+            bytes = got.size;
         if(bytes > 4096*256) bytes = 4096*256;
         respondtoSDL(&got, buffer, bytes);
         SDL_QueueAudio(device, buffer, bytes);
@@ -122,6 +125,7 @@ DLLEXPORT TYPE_BL fauxmix_init(TYPE_NM samplerate, TYPE_BL mono, TYPE_NM samples
     puts("Mixer faucet opened SDL audio device:");
     printf("%d\n", got.freq);
     printf("%d\n", got.samples);
+    printf("%d\n", got.channels);
     
     return true;
 }
