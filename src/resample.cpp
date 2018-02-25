@@ -35,22 +35,20 @@ int linear_resample_into_buffer
     
     if(difference == 0)
     {
-        position = position % sourcelen;
         for(uint64_t i = 0; i < targetlen; i++)
         {
             for(uint64_t c = 0; c < channels; c++)
             {
                 if(looparound)
-                    target[i*channels+c] = source[((position+i)%sourcelen)*channels+c];
-                else if(position+i <= sourcelen)
-                    target[i*channels+c] = source[(position+i)*channels+c];
+                    target[i*channels + c] = source[((position+i)%sourcelen)*channels + c];
+                else if(position+i < sourcelen)
+                    target[i*channels + c] = source[(position+i)*channels + c];
                 else
                     break;
             }
-            return NORESAMPLING;
         }
+        return NORESAMPLING;
     }
-    
     else if (difference > 0) // upsample, use triangle filter to artificially create SUPER RETRO SOUNDING highs
     {
         for(uint64_t i = 0; i < targetlen; i++)
@@ -90,10 +88,9 @@ int linear_resample_into_buffer
                 target[i*channels + c] = out;
             }
         }
+        return UPSAMPLED;
     }
-    
-    
-    else // difference > 0
+    else // i.e. difference < 0
     {   // downsample, use triangle filter for laziness's sake, should really use sinc though
         // convert input position to surrounding output positions
         for(uint64_t s = 0; s < targetlen; s++)
@@ -144,5 +141,6 @@ int linear_resample_into_buffer
                 target[s*channels + c] = transient;
             }
         }
+        return DOWNSAMPLED;
     }
 }

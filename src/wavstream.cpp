@@ -31,15 +31,15 @@ float * wavstream::generateframe(uint64_t count, uint64_t channels, uint64_t sam
     }
     
     // reallocate scratch buffer if we need to generate more data than it can hold
-    if(count > bufferlen and buffer != nullptr)
+    if(count > bufferlen and resample_buffer != nullptr)
     {
-        free(buffer);
-        buffer = nullptr;
+        free(resample_buffer);
+        resample_buffer = nullptr;
     }
-    if(buffer == nullptr)
+    if(resample_buffer == nullptr)
     {
         bufferlen = count;
-        buffer = (float*)malloc(bufferlen*channels*sizeof(float));
+        resample_buffer = (float*)malloc(bufferlen*channels*sizeof(float));
     }
 /*
 ( uint64_t position
@@ -52,16 +52,36 @@ float * wavstream::generateframe(uint64_t count, uint64_t channels, uint64_t sam
 , uint64_t targetfreq
 , bool looparound
 */
+    // downmix (note: any channel number mismatch makes the soundbyte be downsample to mono, then up to the output channel count)
+    float * from_buffer;
+    if(channels == sample->channels)
+        from_buffer = sample->buffer;
+    else
+    {
+        if(downmix_buffer == nullptr)
+            downmix_buffer = (float *)malloc(channels*sample->samples*sizeof(float));
+        for(uint64_t i = 0; i < sample->samples; i++)
+        {
+            float sum = 0;
+            for(uint64_t c = 0; c < sample->channels; c++)
+                sum += sample->buffer[i*sample->channels + c];
+            sum /= sample->channels;
+            for(uint64_t c = 0; c < channels; c++)
+                downmix_buffer[i*channels + c] = sum;
+        }
+        from_buffer = downmix_buffer;
+    }
+    
     // resample the sample data into the scratch buffer starting at the playback progress point
     // we track the progress using output samples, *NOT* storage samples, in order to use all integer math
     // FIXME: need to convert between mono/stereo somewhere between here and the mixer
     linear_resample_into_buffer
     ( position
     , channels
-    , sample->buffer
+    , from_buffer
     , sample->samples
     , sample->samplerate
-    , buffer
+    , resample_buffer
     , bufferlen
     , samplerate
     , info->loop);
@@ -81,7 +101,7 @@ float * wavstream::generateframe(uint64_t count, uint64_t channels, uint64_t sam
         info->playing = false;
     }
     
-    return buffer;
+    return resample_buffer;
 }
 void wavstream::fire(emitterinfo * info)
 {

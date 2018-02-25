@@ -5,22 +5,26 @@
 #include <opusfile.h>
 
 #include <stdio.h>
-#include <iostream>
+#include <math.h>
 
 #include <thread>
 
 // Shitty opus loading implementation that might break on malformed files
 // SECURITY: NO SECURITY TESTING AT ALL. DO NOT FEED UNTRUSTED OPUS FILES INTO THIS.
 
+int t_opusfile_load(wavfile * self);
+
 wavfile * opusfile_load (const char * filename)
 {
     puts("loading opus sample");
     auto sample = new wavfile;
-    sample->status = 0;
-    sample->stored = std::string(filename);
-    sample->format.volume = 1.0f;
-    std::thread mythread(t_opusfile_load, sample);
-    mythread.detach();
+    if(sample)
+    {
+        sample->status = 0;
+        sample->stored = std::string(filename);
+        std::thread mythread(t_opusfile_load, sample);
+        mythread.detach();
+    }
     return sample;
 }
 
@@ -32,73 +36,60 @@ int t_opusfile_load(wavfile * self)
     if(myfile == NULL)
     {
         self->status = -1;
-        puts("failed loading opus sample");
         return 0;
     }
-    auto samples = op_pcm_total(myfile, -1);
-    auto values = samples * 2;
-    auto bytes = samples * 2 * 2;
+    int64_t samples = op_pcm_total(myfile, -1);
+    if(samples < 0)
+    {
+        self->status = -1;
+        return 0;
+    }
+    uint64_t values = uint64_t(samples) * 2;
     
-    auto buffer = malloc(bytes);
+    float * buffer = (float *)malloc(values*sizeof(float));
+    if(!buffer)
+    {
+        self->status = -1;
+        return 0;
+    }
     
     int prev, next;
     next = op_current_link(myfile);
-    auto addr = (opus_int16*)buffer;
-    std::cout << "links: " << op_link_count(myfile) << "\n";
-    std::cout << "len: " << samples << "\n";
+    uint64_t values_left = values;
     do
     {
         prev = next;
-        auto r = op_read_stereo(myfile, op_pcm_tell(myfile)*2+addr, values);
+        int64_t tell = op_pcm_tell(myfile);
+        if(tell < 0)
+        {
+            self->status = -1;
+            free(buffer);
+            return 0;
+        }
+        int64_t r = op_read_float_stereo(myfile, buffer + tell*2, values_left);
         if(r < 0)
         {
             self->status = -1;
             free(buffer);
-            puts("failed loading opus sample");
             return 0;
         }
         else if (r == 0)
             break;
         
+        values_left -= r;
+        
         next = op_current_link(myfile);
-//        puts("chunk through");
-//        std::cout << "read " << r << "\n";
-    } while (prev != next or op_pcm_tell(myfile) < samples);
-    
-    std::cout << "prev " << prev << " next " << next << "\n";
-    
-    self->format.isfloatingpoint = false;
-    self->format.channels = 2;
-    self->format.samplerate = 48000;
-    self->format.bytespersample = 2;
-    self->format.datagain = 0x8000;
-    self->format.slowdatagain = 0;
-    self->format.blocksize = 4;
-    
-    unsigned char * fmt = (unsigned char*)malloc(16);
-    fmt[ 0] = 0x01;;
-    fmt[ 1] = 0x00;
-    fmt[ 2] = 0x02;
-    fmt[ 3] = 0x00;
-    fmt[ 4] = 0x80;;
-    fmt[ 5] = 0xBB;
-    fmt[ 6] = 0x00;
-    fmt[ 7] = 0x00;
-    fmt[ 8] = 0x00;;
-    fmt[ 9] = 0xEE;
-    fmt[10] = 0x02;
-    fmt[11] = 0x00;
-    fmt[12] = 0x04;;
-    fmt[13] = 0x00;
-    fmt[14] = 0x10;
-    fmt[15] = 0x00;
+    } while (values_left > 0 and (prev != next or op_pcm_tell(myfile) < samples));
     
     self->samples = samples;
-    self->bytes = bytes;
-    self->fmt = fmt;
-    self->data = (Uint8*)buffer;
+    self->channels = 2;
+    self->samplerate = 48000;
+    self->buffer = buffer;
     self->status = 1;
-    puts("loaded opus sample");
+    
+    op_free(myfile);
+    
+    puts("loaded opus file successfully");
 }
 
 #endif

@@ -68,8 +68,7 @@ int inner_wavfile_load(wavfile * self)
         IO_ERROR,
         ALLOCATION_ERROR,
         INVALID_FORMAT,
-        UNSUPPORTED_FORMAT,
-        INVALID_BITSTREAM
+        UNSUPPORTED_FORMAT
     };
     
     uint8_t * fmt = nullptr;
@@ -323,6 +322,5 @@ int inner_wavfile_load(wavfile * self)
     self->samplerate = samplerate;
     self->buffer = buffer;
     self->status = 1;
-    puts("loaded sample");
     return GOOD;
 }
