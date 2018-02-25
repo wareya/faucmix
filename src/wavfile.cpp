@@ -205,6 +205,7 @@ int inner_wavfile_load(wavfile * self)
         puts("loading");
     }
     out:
+    puts("finished reading");
     
     fclose(file);
     
@@ -322,5 +323,6 @@ int inner_wavfile_load(wavfile * self)
     self->samplerate = samplerate;
     self->buffer = buffer;
     self->status = 1;
+    puts("finished loading wavfile");
     return GOOD;
 }

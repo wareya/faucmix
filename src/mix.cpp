@@ -25,17 +25,17 @@ std::vector<mixinfo *> infos;
 std::deque<double> timestamps;
 
 // buffer, number of sample frames, number of channels per frame, sample rate
-void mix(float * buffer, uint64_t count, uint64_t channels, uint64_t samplerate)
+void mix(float * provided_buffer, uint64_t count, uint64_t channels, uint64_t samplerate)
 {
     /* Get emitter responses */
     for(auto s : emitters)
     {
-        auto stream = s.second;
-        auto f = stream->generateframe(count, channels, samplerate);
+        auto emitter = s.second;
+        auto f = emitter->generateframe(count, channels, samplerate);
         if(f != nullptr)
         {
             responses.push_back(f);
-            infos.push_back(&stream->mix);
+            infos.push_back(&emitter->mix);
         }
     }
     /* Mix responses into output stream */
@@ -94,7 +94,7 @@ void mix(float * buffer, uint64_t count, uint64_t channels, uint64_t samplerate)
             }
         }
         for(auto c = 0; c < channels; c++)
-            buffer[used*channels + c] = transient[c]/ducker;
+            provided_buffer[used*channels + c] = transient[c]/ducker;
         
         used += 1;
     }

@@ -1,9 +1,8 @@
 #include "api.hpp"
 
-#include <SDL2/SDL.h>
-#undef main
-
+#include <thread>
 #include <math.h>
+#include <string.h>
 
 int main(int argc, char * argv[])
 {
@@ -14,10 +13,10 @@ int main(int argc, char * argv[])
 
     //fauxmix_use_float_output(true);
 
-    fauxmix_init(48000, false, 1024);
+    fauxmix_init(48000, 1024);
     
-    Uint32 emitter1;
-    Uint32 sample1;
+    uint32_t emitter1;
+    uint32_t sample1;
     
     if(strcmp("ducker", argv[1]) != 0)
     {
@@ -42,12 +41,12 @@ int main(int argc, char * argv[])
     
     fauxmix_push();
     
-    SDL_Delay(500);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     if(argc <= 2) // normal
     {
         while(fauxmix_emitter_status(emitter1) > 0)
         {
-            SDL_Delay(100);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
             if(fauxmix_sample_status(sample1) == -1)
                 break;
             else if(fauxmix_sample_status(sample1) == -2)
@@ -58,7 +57,7 @@ int main(int argc, char * argv[])
     {
         while(1)
         {
-            //SDL_Delay(8);
+            std::this_thread::sleep_for(std::chrono::milliseconds(8));
             
             fauxmix_emitter_fire(emitter1);
             if(fauxmix_sample_status(sample1) == -1)
@@ -68,7 +67,6 @@ int main(int argc, char * argv[])
         }
     }
     puts("broke out");
-    SDL_Delay(100);
-    SDL_CloseAudio();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     return 0;
 }

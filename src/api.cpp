@@ -7,16 +7,17 @@
 
 #include "btime.hpp"
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_audio.h>
-
 #include <iostream>
 #include <algorithm>
 #include <atomic>
+#include <thread>
 
 #include <math.h>
 
 #include "global.hpp"
+#include "wasapi.hpp"
+#include "dsound.hpp"
+
 bool isfloat;
 
 DLLEXPORT TYPE_VD fauxmix_dll_init()
@@ -25,7 +26,6 @@ DLLEXPORT TYPE_VD fauxmix_dll_init()
     volume = 1.0f;
     ducker = 1.0f;
     isfloat = false;
-    SDL_Init(SDL_INIT_AUDIO);
 }
 
 DLLEXPORT TYPE_VD fauxmix_use_float_output(TYPE_BL b)
@@ -33,43 +33,8 @@ DLLEXPORT TYPE_VD fauxmix_use_float_output(TYPE_BL b)
     isfloat = b;
 }
 
-SDL_AudioSpec want;
-SDL_AudioSpec got;
-volatile SDL_AudioDeviceID device = 0;
-
-float buffer[4096*256]; // more than enough samples for everyone
-
-std::atomic<SDL_Thread *> mixer_thread;
-int pseudo_callback(void * data)
-{
-    while(device)
-    {
-        // sdl why are you so bad at the one job you had
-        int32_t bytes = 0;
-        while(bytes <= 0)
-        {
-            if(!device)
-                goto out;
-            bytes = got.size - SDL_GetQueuedAudioSize(device);
-            if(bytes <= 0)
-                SDL_Delay(1);
-        }
-        
-        commandlock.lock();
-        for(auto command : copybuffer)
-            command.func();
-        copybuffer.clear();
-        commandlock.unlock();
-        
-        if(bytes > 4096*256*sizeof(float)) bytes = 4096*256*sizeof(float);
-        mix(buffer, bytes/2/sizeof(float), 2, got.freq);
-        SDL_QueueAudio(device, buffer, bytes);
-        
-        non_time_critical_update_cleanup();
-    }
-    out:
-    mixer_thread = nullptr;
-}
+float mixbuffer[4096*256];
+std::thread mixer_thread;
 
 // ... game logic goes between calls ...
 DLLEXPORT TYPE_VD fauxmix_push()
@@ -81,53 +46,50 @@ DLLEXPORT TYPE_VD fauxmix_push()
 }
 DLLEXPORT TYPE_VD fauxmix_close()
 {
-    if(device) SDL_CloseAudioDevice(device);
-    device = 0;
-    
     initiated = false;
 }
-// Returns true if device seemed to open correctly
-DLLEXPORT TYPE_BL fauxmix_init(TYPE_NM samplerate, TYPE_BL mono, TYPE_NM samples)
+
+void wrap_mix(float * buffer, uint64_t count, uint64_t freq, uint64_t channels)
 {
-    want.freq = samplerate;
-    want.format = AUDIO_F32;
-    want.channels = 2;
-    want.samples = roundf(powf(2,roundf(log2f(samples))));
-    want.callback = 0;
-    want.userdata = &got;
-    device = SDL_OpenAudioDevice(NULL, 0, &want, &got, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
+    commandlock.lock();
+    for(auto command : copybuffer)
+        command.func();
+    copybuffer.clear();
+    commandlock.unlock();
     
-    if(device == 0)
+    mix(buffer, count, freq, channels);
+}
+
+// Returns true if device seemed to open correctly
+DLLEXPORT TYPE_BL fauxmix_init(TYPE_NM samplerate, TYPE_NM samples)
+{
+    // FIXME send samplerate, sample count, floatness to init funcs
+    if(wasapi_init() == 0)
     {
-        puts("Failed to open device");
-        std::cout << SDL_GetError();
+        puts("Mixer faucet opened WASAPI audio device:");
+        mixer_thread = std::thread(wasapi_renderer, wrap_mix, non_time_critical_update_cleanup);
+        mixer_thread.detach();
+    }
+    else if(dsound_init() == 0)
+    {
+        puts("Mixer faucet opened DirectSound audio device:");
+        mixer_thread = std::thread(dsound_renderer, wrap_mix, non_time_critical_update_cleanup);
+        mixer_thread.detach();
+    }
+    else
+    {
+        puts("Could not open WASAPI or directsound.");
         return false;
     }
-    
-    if(mixer_thread) SDL_WaitThread(mixer_thread, nullptr);
-    mixer_thread = SDL_CreateThread(pseudo_callback, "Mixer Faucet", nullptr);
-    if(!mixer_thread)
-    {
-        puts("Somehow failed to make audio mixing thread. Check your operating environment for corruption. Shutting down mixer faucet.");
-        SDL_CloseAudioDevice(device);
-        device = 0;
-        return false;
-    }
-    
-    SDL_PauseAudioDevice(device, 0);
     
     initiated = true;
-    puts("Mixer faucet opened SDL audio device:");
-    printf("%d\n", got.freq);
-    printf("%d\n", got.samples);
-    printf("%d\n", got.channels);
     
     return true;
 }
 DLLEXPORT TYPE_NM fauxmix_get_samplerate()
 {
     if(initiated)
-        return got.freq;
+        return 0;
     else
         return -1;
 }
@@ -135,7 +97,7 @@ DLLEXPORT TYPE_NM fauxmix_get_samplerate()
 DLLEXPORT TYPE_NM fauxmix_get_channels()
 {
     if(initiated)
-        return got.channels;
+        return 0;
     else
         return -1;
 }
@@ -143,7 +105,7 @@ DLLEXPORT TYPE_NM fauxmix_get_channels()
 DLLEXPORT TYPE_NM fauxmix_get_samples()
 {
     if(initiated)
-        return got.samples;
+        return 0;
     else
         return -1;
 }
@@ -271,7 +233,7 @@ DLLEXPORT TYPE_ID fauxmix_emitter_create(TYPE_ID sample)
 
 DLLEXPORT TYPE_EC fauxmix_emitter_volumes(TYPE_ID id, TYPE_FT left, TYPE_FT right)
 {
-    float fadewindow = float(got.freq)*0.01f;
+    float fadewindow = 100;//float(got.freq)*0.01f;
     if(emitterids.Exists(id))
     {
         cmdbuffer.push_back({[id, left, right, fadewindow]()
