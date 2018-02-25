@@ -14,7 +14,7 @@ int main(int argc, char * argv[])
 
     //fauxmix_use_float_output(true);
 
-    fauxmix_init(44100, false, 1024);
+    fauxmix_init(48000, false, 1024);
     
     Uint32 emitter1;
     Uint32 sample1;

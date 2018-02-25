@@ -54,6 +54,7 @@ float * wavstream::generateframe(uint64_t count, uint64_t channels, uint64_t sam
 */
     // resample the sample data into the scratch buffer starting at the playback progress point
     // we track the progress using output samples, *NOT* storage samples, in order to use all integer math
+    // FIXME: need to convert between mono/stereo somewhere between here and the mixer
     linear_resample_into_buffer
     ( position
     , channels
