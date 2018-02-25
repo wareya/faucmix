@@ -1,7 +1,7 @@
 // Coypright 2015 Alexander "wareya" Nadeau <wareya@gmail.com>
 // Available under either the ISC or zlib license.
 
-#include "respondtoSDL.hpp"
+#include "mix.hpp"
 
 #include "emitter.hpp"
 #include "wavstream.hpp"
@@ -19,26 +19,19 @@
 
 #include <stdlib.h>
 
-std::vector<void *> responses;
+std::vector<float *> responses;
 std::vector<mixinfo *> infos;
 
 std::deque<double> timestamps;
 
-void respondtoSDL(void * udata, Uint8 * stream, int len)
+// buffer, number of sample frames, number of channels per frame, sample rate
+void mix(float * buffer, uint64_t count, uint64_t channels, uint64_t samplerate)
 {
-    // get the output stream spec in a way that certain faucet mixer functions understand
-    auto& spec = *(SDL_AudioSpec *)udata;
-    auto fmt = audiospec_to_wavformat(&spec);
-    
-    auto block = fmt.blocksize;
-    auto sample = fmt.bytespersample;
-    int channels = spec.channels;
-    
     /* Get emitter responses */
     for(auto s : emitters)
     {
         auto stream = s.second;
-        auto f = stream->generateframe(&spec, len);
+        auto f = stream->generateframe(count, channels, samplerate);
         if(f != nullptr)
         {
             responses.push_back(f);
@@ -48,14 +41,14 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
     /* Mix responses into output stream */
     // If you can't read this loop without comments, *please don't change it.*
     // It's left uncommented on purpose to keep people who can't read it away.
-    long int maxloops = len;
-    long int used = 0;
-    while(used*block < len and maxloops > 0)
+    uint64_t maxloops = count;
+    uint64_t used = 0;
+    while(used < count and maxloops > 0)
     {
         maxloops -= 1;
         if(ducker > 1.0f)
         {
-            ducker -= 1.0f/fmt.samplerate;
+            ducker -= 1.0f/samplerate;
             if(ducker < 1.0f)
                 ducker = 1.0f;
         }
@@ -79,7 +72,8 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
                 if(mixchannels.count(info->channel))
                     realvol *= mixchannels[info->channel];
                 
-                transient[c] += get_sample((Uint8*)response+(used*channels+c)*sample, &fmt) * realvol;
+                //transient[c] += get_sample((Uint8*)response+(used*channels+c)*sample, &fmt) * realvol;
+                transient[c] += response[used*channels + c]*realvol;
                 
                 if(c+1 == channels and info->remaining > 0)
                 {
@@ -99,8 +93,8 @@ void respondtoSDL(void * udata, Uint8 * stream, int len)
                 puts("Ducking!");
             }
         }
-        for(auto c = 0; c < spec.channels; c++)
-            set_sample(stream+(used*channels+c)*sample, &fmt, transient[c]/ducker);
+        for(auto c = 0; c < channels; c++)
+            buffer[used*channels + c] = transient[c]/ducker;
         
         used += 1;
     }
@@ -127,6 +121,6 @@ void non_time_critical_update_cleanup()
         auto id = s.first;
         auto sample = s.second;
         sampleshadow[id].status = sample->status; // sample status (reflects loading state) can be written by a background thread but is atomic
-        sampleshadow[id].vol = sample->format.volume;
+        sampleshadow[id].vol = sample->volume;
     }
 }

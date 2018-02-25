@@ -7,6 +7,7 @@
 
 #include "btime.hpp"
 
+#include <SDL2/SDL.h>
 #include <SDL2/SDL_audio.h>
 
 #include <iostream>
@@ -36,7 +37,7 @@ SDL_AudioSpec want;
 SDL_AudioSpec got;
 volatile SDL_AudioDeviceID device = 0;
 
-unsigned char buffer[4096*256]; // more than enough samples for everyone
+float buffer[4096*256]; // more than enough samples for everyone
 
 std::atomic<SDL_Thread *> mixer_thread;
 int pseudo_callback(void * data)
@@ -60,10 +61,8 @@ int pseudo_callback(void * data)
         copybuffer.clear();
         commandlock.unlock();
         
-        if(bytes < got.size)
-            bytes = got.size;
-        if(bytes > 4096*256) bytes = 4096*256;
-        respondtoSDL(&got, buffer, bytes);
+        if(bytes > 4096*256*sizeof(float)) bytes = 4096*256*sizeof(float);
+        mix(buffer, bytes/2/sizeof(float), 2, got.freq);
         SDL_QueueAudio(device, buffer, bytes);
         
         non_time_critical_update_cleanup();
@@ -91,12 +90,8 @@ DLLEXPORT TYPE_VD fauxmix_close()
 DLLEXPORT TYPE_BL fauxmix_init(TYPE_NM samplerate, TYPE_BL mono, TYPE_NM samples)
 {
     want.freq = samplerate;
-    if(!isfloat)
-        want.format = AUDIO_S16;
-    else
-        want.format = AUDIO_F32;
-    // We test whether mono is less than 0.5 just in case we're being used from game maker, where that is the "truth" convention
-    want.channels = (mono < 0.5)?1:2;
+    want.format = AUDIO_F32;
+    want.channels = 2;
     want.samples = roundf(powf(2,roundf(log2f(samples))));
     want.callback = 0;
     want.userdata = &got;
@@ -225,7 +220,7 @@ DLLEXPORT TYPE_EC fauxmix_sample_volume(TYPE_ID sample, TYPE_FT volume)
         cmdbuffer.push_back({[sample, volume]()
         {
             auto mine = samples[sample];
-            mine->format.volume = volume;
+            mine->volume = volume;
         }});
         return 0;
     }

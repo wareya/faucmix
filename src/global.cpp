@@ -9,8 +9,8 @@ std::deque<command> copybuffer;
 /* shadow */
 
 std::mutex shadowlock;
-std::map<Uint32, emitterdat> emittershadow;
-std::map<Uint32, sampledat> sampleshadow;
+std::map<uint32_t, emitterdat> emittershadow;
+std::map<uint32_t, sampledat> sampleshadow;
 
 /* cfg */
 
@@ -20,9 +20,9 @@ float ducker;
 
 /* lists */
 
-GenericAllocator<Uint32> emitterids;
-std::map<Uint32, emitter *> emitters;
-GenericAllocator<Uint32> sampleids;
-std::map<Uint32, wavfile *> samples;
-std::map<Uint32, std::vector<Uint32>> samplestoemitters;
-std::map<Uint32, float> mixchannels; // unimplemented
+GenericAllocator<uint32_t> emitterids;
+std::map<uint32_t, emitter *> emitters;
+GenericAllocator<uint32_t> sampleids;
+std::map<uint32_t, wavfile *> samples;
+std::map<uint32_t, std::vector<uint32_t>> samplestoemitters;
+std::map<uint32_t, float> mixchannels; // unimplemented

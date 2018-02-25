@@ -11,9 +11,7 @@
 #include "wavstream.hpp"
 #include "stream.hpp"
 #include "emitter.hpp"
-#include "respondtoSDL.hpp"
-
-#include <SDL2/SDL_audio.h>
+#include "mix.hpp"
 
 #include "global.hpp"
 
@@ -27,9 +25,9 @@ typedef double TYPE_BL;
 typedef double TYPE_FT;
 typedef char * TYPE_ST;
 #else
-typedef Sint32 TYPE_NM;
-typedef Uint32 TYPE_ID;
-typedef Sint32 TYPE_EC;
+typedef int32_t TYPE_NM;
+typedef uint32_t TYPE_ID;
+typedef int32_t TYPE_EC;
 typedef void TYPE_VD;
 typedef bool TYPE_BL;
 typedef float TYPE_FT;

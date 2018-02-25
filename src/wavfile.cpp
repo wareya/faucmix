@@ -1,20 +1,65 @@
 #include "wavfile.hpp"
 
 #include <stdio.h>
+#include <thread>
+#include <new> // std::nothrow
 
-wavfile * wavfile_load (const char * filename)
+void t_wavfile_load(wavfile * self);
+
+wavfile * wavfile_load(const char * filename)
 {
     puts("loading sample");
-    auto sample = new wavfile;
-    sample->status = 0;
-    sample->stored = std::string(filename);
-    sample->format.volume = 1.0f;
-    SDL_CreateThread(&t_wavfile_load, "wavfile_load:t_wavfile_load", sample);
+    auto sample = new (std::nothrow) wavfile;
+    if(sample)
+    {
+        sample->status = 0;
+        sample->stored = std::string(filename);
+        std::thread mythread(t_wavfile_load, sample);
+        mythread.detach();
+    }
     return sample;
 }
 
-// TODO: Use return codes somehow. But it runs on a thread. Return to wrapper function that sets flags?
-int t_wavfile_load(void * etc)
+float get_sample(void * addr, wavformat * fmt)
+{
+    float trans = 0;
+    if(fmt->bytespersample == 1)
+    {
+        trans = (int(*(uint8_t*)addr))-0x80;
+        trans /= fmt->datagain;
+    }
+    if(fmt->bytespersample == 2)
+    {
+        trans = *(int16_t*)addr;
+        trans /= fmt->datagain;
+    }
+    if(fmt->bytespersample == 3)
+    {
+        int32_t trans2 = *((int32_t*)addr);
+        trans2 = (trans2&0xFFFFFF00)>>8;
+        trans = (double)(trans2) / fmt->slowdatagain;
+    }
+    if(fmt->bytespersample == 4)
+    {
+        if(fmt->isfloatingpoint)
+            trans = *(float*)addr;
+        else
+        {
+            double trans2 = *((int32_t*)addr);
+            trans = trans2 / fmt->slowdatagain;
+        }
+    }
+    return trans;
+}
+
+int inner_wavfile_load(wavfile * self);
+
+void t_wavfile_load(wavfile * self)
+{
+    self->error = inner_wavfile_load(self);
+}
+
+int inner_wavfile_load(wavfile * self)
 {
     enum returncodes
     {
@@ -27,14 +72,10 @@ int t_wavfile_load(void * etc)
         INVALID_BITSTREAM
     };
     
-    /* setup */
-    auto self = (wavfile *)etc;
-    
-    Uint8 * fmt = nullptr;
-    Uint32 fmtlen = 0;
-    Uint8 * data = nullptr;
-    Uint32 datalen = 0;
-    
+    uint8_t * fmt = nullptr;
+    uint64_t fmtlen = 0;
+    uint8_t * data = nullptr;
+    uint64_t datalen = 0;
     
     auto cleanup = [fmt, data]() -> int
     {
@@ -70,7 +111,6 @@ int t_wavfile_load(void * etc)
         return ALLOCATION_ERROR;
     
     pass:
-    
     
     const char * fname = self->stored.data();
     auto file = fopen(fname, "rb");
@@ -119,13 +159,13 @@ int t_wavfile_load(void * etc)
     
     while(!ferror(file) and !feof(file))
     {
-        Uint32 subchunk;
+        uint32_t subchunk;
         fread(&subchunk, 4, 1, file);
         switch(subchunk)
         {
         case 0x20746d66: // 'fmt '
             fread(&fmtlen, 4, 1, file);
-            fmt = (Uint8 *)malloc(fmtlen);
+            fmt = (uint8_t *)malloc(fmtlen);
             if(!fmt)
             {
                 goto allocerror;
@@ -140,7 +180,7 @@ int t_wavfile_load(void * etc)
             break;
         case 0x61746164: //'data'
             fread(&datalen, 4, 1, file);
-            data = (Uint8 *)malloc(datalen);
+            data = (uint8_t *)malloc(datalen);
             if(!data)
             {
                 goto allocerror;
@@ -154,7 +194,7 @@ int t_wavfile_load(void * etc)
                 goto out; // double break pls
             break;
         default:
-            Uint32 len;
+            uint32_t len;
             fread(&len, 4, 1, file);
             if (len%2) // yes there's software broken enough to output files with unaligned chunk sizes
                 len++;
@@ -180,15 +220,21 @@ int t_wavfile_load(void * etc)
         goto unsupported;
     }
     
-    auto format = *(Uint16*)(fmt);
-    auto channels =  *(Uint16*)(fmt+2);
-    auto samplerate =  *(Uint32*)(fmt+4);
+    auto sampleformat = *(uint16_t*)(fmt);
+    auto channels =  *(uint16_t*)(fmt+2);
+    
+    if(channels != 1 and channels != 2)
+    {
+        puts("WAVE file uses more than two channels. Not supported.");
+    }
+    
+    auto samplerate =  *(uint32_t*)(fmt+4);
     // uint32 byterate goes here but is unnecessary
-    auto blocksize =  *(Uint16*)(fmt+12);
-    auto bitspersample =  *(Uint16*)(fmt+14);
+    auto blocksize =  *(uint16_t*)(fmt+12);
+    auto bitspersample =  *(uint16_t*)(fmt+14);
     
     bool isfloatingpoint = false;
-    switch(format)
+    switch(sampleformat)
     {
     case 1: // integer PCM
         isfloatingpoint = false;
@@ -241,54 +287,41 @@ int t_wavfile_load(void * etc)
     
     /*
     bool isfloatingpoint;
-    Uint16 channels;
-    Uint32 samplerate;
-    Uint8 bytespersample;
+    uint16_t channels;
+    uint32_t samplerate;
+    uint8_t bytespersample;
     float datagain;
     double slowdatagain;
     
-    Uint32 length;
-    Uint8 * fmt;
-    Uint8 * data;
+    uint32_t length;
+    uint8_t * fmt;
+    uint8_t * data;
     */
-    self->format.isfloatingpoint = isfloatingpoint;
-    self->format.channels = channels;
-    self->format.samplerate = samplerate;
-    self->format.bytespersample = bytespersample;
-    self->format.datagain = datagain;
-    self->format.slowdatagain = slowdatagain;
-    self->format.blocksize = blocksize;
     
-    /* normalize float */
-    Uint32 length = datalen/blocksize;
-    if(isfloatingpoint)
+    wavformat format;
+    format.isfloatingpoint = isfloatingpoint;
+    format.channels = channels;
+    format.samplerate = samplerate;
+    format.bytespersample = bytespersample;
+    format.datagain = datagain;
+    format.slowdatagain = slowdatagain;
+    format.blocksize = blocksize;
+    
+    // copy to float buffer
+    uint64_t length = datalen/blocksize;
+    float * buffer = (float *)malloc(length*channels*sizeof(float));
+    for(uint64_t i = 0; i < length*channels; i++)
     {
-        float highest = 1.0;
-        if(bytespersample == 4)
-        {
-            for(unsigned i = 0; i < length*channels; i++)
-            {
-                auto t = *(float*)&data[i*bytespersample];
-                highest = t>highest?t:highest;
-                highest = -t>highest?-t:highest;
-            }
-        }
-        if(bytespersample == 8)
-        {
-            for(unsigned i = 0; i < length*channels; i++)
-            {
-                auto t = *(double*)&data[i*bytespersample];
-                highest = t>highest?t:highest;
-                highest = -t>highest?-t:highest;
-            }
-        }
-        datagain = highest;
-        printf("Normalized sample for %f peak amplitude.\n", datagain);
+        float sample = get_sample(data + i*bytespersample, &format);
+        buffer[i] = sample;
     }
+    free(data);
+    free(fmt);
+    
     self->samples = length;
-    self->bytes = datalen;
-    self->fmt = fmt;
-    self->data = data;
+    self->channels = channels;
+    self->samplerate = samplerate;
+    self->buffer = buffer;
     self->status = 1;
     puts("loaded sample");
     return GOOD;

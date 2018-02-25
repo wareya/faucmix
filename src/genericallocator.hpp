@@ -2,8 +2,6 @@
 
 #include <iostream>
 
-#include <SDL2/SDL_stdinc.h>
-
 template <typename T>
 struct GenericAllocator
 {

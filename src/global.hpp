@@ -39,19 +39,14 @@
 #include <deque>
 #include <mutex>
 #include <map>
-#include <SDL2/SDL_stdinc.h>
-#include <SDL2/SDL_audio.h>
 
-/* cfg */
+// cfg
 
 extern bool initiated;
 extern float volume;
 extern float ducker;
 
-extern SDL_AudioSpec want;
-extern SDL_AudioSpec got;
-
-/* cmdbuffer */
+// cmdbuffer
 
 struct command
 {
@@ -62,7 +57,7 @@ extern std::mutex commandlock;
 extern std::deque<command> cmdbuffer;
 extern std::deque<command> copybuffer;
 
-/* shadow */
+// shadow
 
 struct emitterdat
 {
@@ -78,26 +73,26 @@ struct sampledat
 };
 
 extern std::mutex shadowlock;
-extern std::map<Uint32, emitterdat> emittershadow;
-extern std::map<Uint32, sampledat> sampleshadow;
+extern std::map<uint32_t, emitterdat> emittershadow;
+extern std::map<uint32_t, sampledat> sampleshadow;
 
 /* lists */ 
 #include "genericallocator.hpp"
 
 #include "emitter.hpp"
 /* for game thread */
-extern GenericAllocator<Uint32> emitterids;
+extern GenericAllocator<uint32_t> emitterids;
 /* for audio thread */
-extern std::map<Uint32, emitter *> emitters;
+extern std::map<uint32_t, emitter *> emitters;
 
 #include "wavfile.hpp"
 /* for game thread */
-extern GenericAllocator<Uint32> sampleids;
+extern GenericAllocator<uint32_t> sampleids;
 /* for audio thread */
-extern std::map<Uint32, wavfile *> samples;
+extern std::map<uint32_t, wavfile *> samples;
 
 // used to kill wav-emitters when a wav-sample is killed
-extern std::map<Uint32, std::vector<Uint32>> samplestoemitters;
-extern std::map<Uint32, float> mixchannels; // unimplemented
+extern std::map<uint32_t, std::vector<uint32_t>> samplestoemitters;
+extern std::map<uint32_t, float> mixchannels; // unimplemented
 
 #endif

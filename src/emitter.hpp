@@ -5,8 +5,6 @@
 #include "format.hpp"
 #include "wavfile.hpp"
 
-#include <SDL2/SDL_audio.h>
-
 // Mixinfo is handled by the mixer, not the emitter
 struct mixinfo
 {
@@ -37,7 +35,7 @@ struct emitter
     void * DSPbuffer = nullptr;
     size_t DSPlen;
     
-    void * generateframe(SDL_AudioSpec * spec, unsigned int len);
+    float * generateframe(uint64_t count, uint64_t channels, uint64_t samplerate);
     void fire();
     void cease();
 };

@@ -10,17 +10,17 @@ struct wavfile
 {
     std::atomic<int> status;
     
-    Uint8 * fmt = nullptr;
-    Uint8 * data = nullptr;
-    Uint32 samples;
-    Uint32 bytes;
+    float * buffer = nullptr;
+    float volume = 1.0;
+    uint64_t samples = 0;
+    uint64_t samplerate = 0;
+    uint64_t channels = 0;
     
     std::string stored;
-    wavformat format;
+    
+    int32_t error;
 };
 
 wavfile * wavfile_load (const char * filename);
-
-int t_wavfile_load(void * etc);
 
 #endif

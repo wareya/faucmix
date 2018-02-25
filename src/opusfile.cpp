@@ -7,8 +7,10 @@
 #include <stdio.h>
 #include <iostream>
 
+#include <thread>
+
 // Shitty opus loading implementation that might break on malformed files
-// I DID NOT SECURITY TEST THIS, DO NOT FEED UNTRUSTED OPUS FILES INTO THIS
+// SECURITY: NO SECURITY TESTING AT ALL. DO NOT FEED UNTRUSTED OPUS FILES INTO THIS.
 
 wavfile * opusfile_load (const char * filename)
 {
@@ -17,13 +19,13 @@ wavfile * opusfile_load (const char * filename)
     sample->status = 0;
     sample->stored = std::string(filename);
     sample->format.volume = 1.0f;
-    SDL_CreateThread(&t_opusfile_load, "faucetmix2:t_opusfile_load", sample);
+    std::thread mythread(t_opusfile_load, sample);
+    mythread.detach();
     return sample;
 }
 
-int t_opusfile_load(void * etc)
+int t_opusfile_load(wavfile * self)
 {
-    auto self = (wavfile *)etc;
     const char * fname = self->stored.data();
     
     auto myfile = op_open_file(fname, NULL);

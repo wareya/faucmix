@@ -40,6 +40,8 @@ int main(int argc, char * argv[])
         fauxmix_emitter_fire(emitter3);
     }
     
+    fauxmix_push();
+    
     SDL_Delay(500);
     if(argc <= 2) // normal
     {

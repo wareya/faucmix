@@ -3,17 +3,16 @@
 
 #include "format.hpp"
 
-#include <SDL2/SDL_types.h>
-
 // Takes N channels, gives N channels
 int linear_resample_into_buffer
-( Uint32 position
-, wavformat * srcfmt
-, void * src
-, Uint32 srclen
-, void * tgt
-, Uint32 tgtlen
-, wavformat * tgtfmt
+( uint64_t position
+, uint64_t channels
+, float * source
+, uint64_t sourcelen
+, uint64_t sourcefreq
+, float * target
+, uint64_t targetlen
+, uint64_t targetfreq
 , bool looparound
 );
 
