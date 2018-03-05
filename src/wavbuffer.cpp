@@ -3,8 +3,6 @@
 #include <stdlib.h> // size_t
 #include <string.h> // memset
 
-#define DEBUG_WAVBUFFER_ARRAYS
-
 #ifdef DEBUG_WAVBUFFER_ARRAYS
 #include <stdio.h> // puts
 #include <signal.h> // raise
