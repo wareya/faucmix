@@ -27,7 +27,7 @@ std::deque<double> timestamps;
 // buffer, number of sample frames, number of channels per frame, sample rate
 void mix(float * provided_buffer, uint64_t count, uint64_t channels, uint64_t samplerate)
 {
-    /* Get emitter responses */
+    // Get emitter responses
     for(auto s : emitters)
     {
         auto emitter = s.second;
@@ -38,7 +38,7 @@ void mix(float * provided_buffer, uint64_t count, uint64_t channels, uint64_t sa
             infos.push_back(&emitter->mix);
         }
     }
-    /* Mix responses into output stream */
+    // Mix responses into output stream
     // If you can't read this loop without comments, *please don't change it.*
     // It's left uncommented on purpose to keep people who can't read it away.
     uint64_t maxloops = count;
@@ -72,7 +72,6 @@ void mix(float * provided_buffer, uint64_t count, uint64_t channels, uint64_t sa
                 if(mixchannels.count(info->channel))
                     realvol *= mixchannels[info->channel];
                 
-                //transient[c] += get_sample((Uint8*)response+(used*channels+c)*sample, &fmt) * realvol;
                 transient[c] += response[used*channels + c]*realvol;
                 
                 if(c+1 == channels and info->remaining > 0)
@@ -105,7 +104,7 @@ void non_time_critical_update_cleanup()
     responses.clear();
     infos.clear();
     
-    /* Build shadow data */
+    // Build shadow data
     emittershadow.clear();
     sampleshadow.clear();
     for(auto s : emitters)

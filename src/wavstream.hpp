@@ -13,9 +13,8 @@ struct wavstream : pcmstream
     wavstream(wavfile * given);
     
     uint64_t position; // Position is in OUTPUT SAMPLES, not SOUNDBYTE SAMPLES
-    float * downmix_buffer = nullptr; // same length as soundbyte
-    float * resample_buffer = nullptr; // arbitrary length
-    uint64_t bufferlen;
+    wavbuffer downmix_buffer; // same length as soundbyte
+    wavbuffer resample_buffer; // arbitrary length
     
     bool ready();
     float * generateframe(uint64_t count, uint64_t channels, uint64_t samplerate, emitterinfo * info);

@@ -128,7 +128,7 @@ int inner_wavfile_load(wavfile * self)
         goto invalid;
     }
     
-    /* check header */
+    // check header
     
     char header[12];
     fread(header, 1, 12, file);
@@ -153,8 +153,8 @@ int inner_wavfile_load(wavfile * self)
         puts("Not a WAVE file!");
         goto invalid;
     }
-    
-    /* read data from file */
+   
+    // read data from file
     
     while(!ferror(file) and !feof(file))
     {
@@ -163,6 +163,7 @@ int inner_wavfile_load(wavfile * self)
         switch(subchunk)
         {
         case 0x20746d66: // 'fmt '
+            // FIXME: fmt probably needs to be fixed length
             fread(&fmtlen, 4, 1, file);
             fmt = (uint8_t *)malloc(fmtlen);
             if(!fmt)
@@ -226,6 +227,7 @@ int inner_wavfile_load(wavfile * self)
     if(channels != 1 and channels != 2)
     {
         puts("WAVE file uses more than two channels. Not supported.");
+        goto unsupported;
     }
     
     auto samplerate =  *(uint32_t*)(fmt+4);
@@ -309,19 +311,16 @@ int inner_wavfile_load(wavfile * self)
     
     // copy to float buffer
     uint64_t length = datalen/blocksize;
-    float * buffer = (float *)malloc(length*channels*sizeof(float));
-    for(uint64_t i = 0; i < length*channels; i++)
+    self->buffer.resize(length, channels);
+    for(uint64_t i = 0; i < self->buffer.ultimate_length; i++)
     {
         float sample = get_sample(data + i*bytespersample, &format);
-        buffer[i] = sample;
+        self->buffer[i] = sample;
     }
     free(data);
     free(fmt);
     
-    self->samples = length;
-    self->channels = channels;
     self->samplerate = samplerate;
-    self->buffer = buffer;
     self->status = 1;
     puts("finished loading wavfile");
     return GOOD;

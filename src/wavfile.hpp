@@ -2,6 +2,7 @@
 #define INCLUDED_WAVFLIE
 
 #include "format.hpp"
+#include "wavbuffer.hpp"
 
 #include <atomic>
 #include <string>
@@ -10,11 +11,9 @@ struct wavfile
 {
     std::atomic<int> status;
     
-    float * buffer = nullptr;
-    float volume = 1.0;
-    uint64_t samples = 0;
+    wavbuffer buffer;
     uint64_t samplerate = 0;
-    uint64_t channels = 0;
+    float volume = 1.0;
     
     std::string stored;
     

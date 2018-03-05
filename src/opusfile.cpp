@@ -46,8 +46,8 @@ int t_opusfile_load(wavfile * self)
     }
     uint64_t values = uint64_t(samples) * 2;
     
-    float * buffer = (float *)malloc(values*sizeof(float));
-    if(!buffer)
+    self->buffer.resize(samples, 2);
+    if(!self->buffer.array)
     {
         self->status = -1;
         return 0;
@@ -63,14 +63,12 @@ int t_opusfile_load(wavfile * self)
         if(tell < 0)
         {
             self->status = -1;
-            free(buffer);
             return 0;
         }
-        int64_t r = op_read_float_stereo(myfile, buffer + tell*2, values_left);
+        int64_t r = op_read_float_stereo(myfile, self->buffer.array + tell*2, values_left);
         if(r < 0)
         {
             self->status = -1;
-            free(buffer);
             return 0;
         }
         else if (r == 0)
@@ -81,10 +79,7 @@ int t_opusfile_load(wavfile * self)
         next = op_current_link(myfile);
     } while (values_left > 0 and (prev != next or op_pcm_tell(myfile) < samples));
     
-    self->samples = samples;
-    self->channels = 2;
     self->samplerate = 48000;
-    self->buffer = buffer;
     self->status = 1;
     
     op_free(myfile);
