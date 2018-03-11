@@ -91,12 +91,14 @@ float * wavstream::generateframe(uint64_t count, uint64_t channels, uint64_t sam
     else if(position*(uint64_t)sample->samplerate > sample->buffer.samples*samplerate)
     {
         info->playing = false;
+        info->complete = true;
     }
     
     return resample_buffer.array;
 }
 void wavstream::fire(emitterinfo * info)
 {
+    info->complete = false;
     position = 0;
     info->playing = true;
 }

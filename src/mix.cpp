@@ -97,6 +97,18 @@ void mix(float * provided_buffer, uint64_t count, uint64_t channels, uint64_t sa
         
         used += 1;
     }
+    for(auto s : emitters)
+    {
+        auto id = s.first;
+        auto mine = s.second;
+        
+        if(mine->transient and mine->info.complete == true)
+        {
+            delete mine;
+            emitters.erase(id);
+            emitterids.Free(id);
+        }
+    }
 }
 
 void non_time_critical_update_cleanup()

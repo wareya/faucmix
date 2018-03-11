@@ -4,10 +4,12 @@
 
 #include <iostream>
 
-emitter::emitter(wavfile * sample)
+emitter::emitter(wavfile * sample, bool transient)
 {
     stream = new wavstream(sample);
     info.playing = false;
+    info.complete = false;
+    this->transient = transient;
 }
 emitter::~emitter()
 {

@@ -62,6 +62,7 @@ DLLEXPORT TYPE_VD fauxmix_sample_kill(TYPE_ID sample);
 
 #include "emitter.hpp"
 DLLEXPORT TYPE_ID fauxmix_emitter_create(TYPE_ID sample);
+DLLEXPORT TYPE_ID fauxmix_emitter_create_transient(TYPE_ID sample);
 DLLEXPORT TYPE_EC fauxmix_emitter_volumes(TYPE_ID mine, TYPE_FT left, TYPE_FT right);
 DLLEXPORT TYPE_EC fauxmix_emitter_loop(TYPE_ID mine, TYPE_BL whether);
 DLLEXPORT TYPE_EC fauxmix_emitter_pitch(TYPE_ID mine, TYPE_FT ratefactor);

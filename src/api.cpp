@@ -36,7 +36,7 @@ DLLEXPORT TYPE_VD fauxmix_use_float_output(TYPE_BL b)
 float mixbuffer[4096*256];
 std::thread mixer_thread;
 
-// ... game logic goes between calls ...
+// Game logic goes between calls to fauxmic_push(). input -> game logic -> fauxmic_push() -> framerate limiter
 DLLEXPORT TYPE_VD fauxmix_push()
 {
     commandlock.lock();
@@ -139,6 +139,7 @@ DLLEXPORT TYPE_ID fauxmix_sample_load(TYPE_ST filename)
     cmdbuffer.push_back({[i, filename]()
     {
         #ifndef NO_OPUS
+            // garbage, rewrite
             auto b = strlen(filename);
             int a;
             if(b > 10000) // no
@@ -224,6 +225,22 @@ DLLEXPORT TYPE_ID fauxmix_emitter_create(TYPE_ID sample)
         {
             auto s = samples[sample];
             auto mine = new emitter(s);
+            emitters.emplace(i, mine);
+            samplestoemitters[sample].push_back(i);
+        }
+    }});
+    return i;
+}
+
+DLLEXPORT TYPE_ID fauxmix_emitter_create_transient(TYPE_ID sample)
+{
+    auto i = emitterids.New();
+    cmdbuffer.push_back({[i, sample]()
+    {
+        if(samples.count(sample) != 0)
+        {
+            auto s = samples[sample];
+            auto mine = new emitter(s, true);
             emitters.emplace(i, mine);
             samplestoemitters[sample].push_back(i);
         }

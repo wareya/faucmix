@@ -29,7 +29,9 @@ struct emitter
     
     mixinfo mix;
     
-    emitter(wavfile * sample);
+    bool transient = false;
+    
+    emitter(wavfile * sample, bool transient = false);
     ~emitter();
     
     void * DSPbuffer = nullptr;
